@@ -19,10 +19,18 @@ export interface PanelDescriptor {
   order?: number
   /**
    * Content component contribution. Omitting it renders a placeholder body;
-   * the component receives `visible: false` whenever its tab is not the
-   * active one, so polling and subscriptions can pause.
+   * the component receives shell actions through props: `visible` is false
+   * whenever its tab is not the active one (pause polling), `openPanel`
+   * focuses or opens another registered panel, and `close` closes this tab.
    */
-  component?: (props: { visible: boolean }) => import('react').ReactNode
+  component?: (props: PanelComponentProps) => import('react').ReactNode
+}
+
+/** Props the shell hands to every rendered panel component. */
+export interface PanelComponentProps {
+  visible: boolean
+  openPanel(panelId: string): void
+  close(): void
 }
 
 export interface RegisteredPanel extends PanelDescriptor {

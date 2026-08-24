@@ -11,6 +11,7 @@ import { createWorkbenchRegistry } from './registry.ts'
 import { setCollapsed, togglePalette } from './shell/events.ts'
 import { mountDock } from './shell/mount.tsx'
 import { loadPrefs, savePrefs } from './shell/prefs.ts'
+import { registerFilesFeature } from './panels/files/register-files.tsx'
 
 export { createWorkbenchRegistry } from './registry.ts'
 export type { CommandDescriptor, PanelDescriptor, RegisteredPanel, WorkbenchRegistryApi } from './registry.ts'
@@ -38,6 +39,10 @@ export function apply(ctx: Context): void {
   ctx.provide('workbench', registry)
 
   const disposeCommands = wireBuiltInCommands(registry)
+  const disposeFiles = registerFilesFeature(
+    registry,
+    typeof window !== 'undefined' ? window.localStorage : undefined,
+  )
 
   if (typeof document === 'undefined') {
     // Node/test or non-DOM surface: the service contract still loads.
@@ -56,6 +61,7 @@ export function apply(ctx: Context): void {
   dock.applyPrefs(loadPrefs(window.localStorage))
   ctx.effect(() => () => {
     dock.dispose()
+    disposeFiles()
     disposeCommands()
   }, 'workbench: dock mount')
 }

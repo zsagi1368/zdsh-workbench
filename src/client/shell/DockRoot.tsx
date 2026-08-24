@@ -266,7 +266,7 @@ export function DockRoot(props: {
             <button className="zdsh-wb-menuitem" onClick={() => store.closeTab(activeId)}>关闭此页签</button>
           </div>
         ) : (
-          <PanelBody registry={registry} id={activeId} />
+          <PanelBody registry={registry} id={activeId} store={store} />
         )}
       </div>
 
@@ -295,7 +295,7 @@ export function DockRoot(props: {
   )
 }
 
-function PanelBody(props: { registry: WorkbenchRegistryApi; id: string }): React.ReactNode {
+function PanelBody(props: { registry: WorkbenchRegistryApi; id: string; store: LayoutStore }): React.ReactNode {
   const panel = props.registry.getPanels().find((candidate) => candidate.id === props.id)
   const component = panel?.component
   if (component === undefined) {
@@ -306,5 +306,9 @@ function PanelBody(props: { registry: WorkbenchRegistryApi; id: string }): React
       </div>
     )
   }
-  return component({ visible: true })
+  return component({
+    visible: true,
+    openPanel: (panelId: string) => props.store.openPanel(panelId),
+    close: () => props.store.closeTab(props.id),
+  })
 }

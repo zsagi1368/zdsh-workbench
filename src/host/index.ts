@@ -1,15 +1,18 @@
 /**
- * Workbench host half. Owns the `/workbench` HTTP prefix: every route passes
- * the browser-trust fence (see trust.ts) before any work happens, and every
- * answer is JSON with stable error shapes. M1 skeleton registers exactly one
- * route family — the liveness probe — and grows the fs/git/pty/ledger routes
- * behind the same fence in later milestones.
+ * Workbench host half. Owns the `/workbench` HTTP prefix and the
+ * `/workbench/events` SSE channel. Every request passes the browser-trust
+ * fence (see trust.ts) before any work happens. API responses share one
+ * envelope (`shared/protocol-envelope.ts`); unknown methods answer with
+ * `no-route` on HTTP 200 so transport status stays reserved for transport.
  */
 import type { Context } from '@deepseek-ai/cordis'
 import type { ServerResponse } from 'node:http'
-import { WORKBENCH_ROUTE_PREFIX, pingResult } from '../shared/protocol.ts'
+import { WORKBENCH_ROUTE_PREFIX as PREFIX, pingResult } from '../shared/protocol.ts'
+import type { WorkbenchRouteEnvelope } from '../shared/protocol-envelope.ts'
 import type { WebRoute } from './context-types.ts'
 import './context-types.ts'
+import { createFsHandlers, readBody, RootCache } from './fs-routes.ts'
+import { FsWatcherManager } from './fs-watch.ts'
 import { assertTrustedAuthorityEntry, isTrustedRequestHost } from './trust.ts'
 
 /** Services required from the host composition. */
@@ -23,32 +26,144 @@ export interface WorkbenchHostConfig {
    * own trusted-host posture; entries are validated loudly at load time.
    */
   trustedHosts?: string[]
+  /** Text read cap per `fs.read`. Clamped hard at 8 MiB. */
+  readLimitBytes?: number
+  /** Request-body byte cap (also bounds writes). */
+  writeBodyLimitBytes?: number
+  /** Directory listing row bound per level. */
+  listLimit?: number
+  /** Search result bound before truncation. */
+  searchLimit?: number
+  /** Watcher batch window in milliseconds. */
+  watchDebounceMs?: number
 }
+
+const DEFAULTS = {
+  readLimitBytes: 512 * 1024,
+  writeBodyLimitBytes: 128 * 1024 * 1024,
+  listLimit: 1000,
+  searchLimit: 200,
+  watchDebounceMs: 150,
+} as const
 
 function respondJson(res: ServerResponse, status: number, body: unknown): void {
   res.writeHead(status, { 'content-type': 'application/json' })
   res.end(JSON.stringify(body))
 }
 
+function fail(code: string, message: string): WorkbenchRouteEnvelope<never> {
+  return { ok: false, error: { code, message } }
+}
+
 export function apply(ctx: Context, options?: WorkbenchHostConfig): void {
   const trustedHosts = options?.trustedHosts ?? []
   for (const entry of trustedHosts) assertTrustedAuthorityEntry(entry)
 
-  const route: WebRoute = {
+  const readLimitBytes = options?.readLimitBytes ?? DEFAULTS.readLimitBytes
+  const bodyCap = options?.writeBodyLimitBytes ?? DEFAULTS.writeBodyLimitBytes
+  const watchers = new FsWatcherManager({ debounceMs: options?.watchDebounceMs ?? DEFAULTS.watchDebounceMs })
+  const handlers = createFsHandlers(new RootCache(), {
+    readLimitBytes,
+    listLimit: options?.listLimit ?? DEFAULTS.listLimit,
+    searchLimit: options?.searchLimit ?? DEFAULTS.searchLimit,
+  })
+
+  const dispatch = async (method: string, payload: unknown): Promise<WorkbenchRouteEnvelope<unknown>> => {
+    if (method === 'ping') return envelopeValue(pingResult())
+    const handler = handlers.get(method)
+    if (handler === undefined) return fail('no-route', `unknown workbench method ${method}`)
+    return handler(payload)
+  }
+
+  function envelopeValue<T>(value: T): WorkbenchRouteEnvelope<T> {
+    return { ok: true, value }
+  }
+
+  const apiRoute: WebRoute = {
     kind: 'prefix',
-    path: WORKBENCH_ROUTE_PREFIX,
+    path: `${PREFIX}/api/`,
     handler: async (req, res) => {
       if (!isTrustedRequestHost(req.headers, trustedHosts)) {
-        respondJson(res, 403, { ok: false, error: { code: 'untrusted-host', message: 'host header failed the trust fence' } })
+        respondJson(res, 403, fail('untrusted-host', 'host header failed the trust fence'))
         return
       }
       const url = new URL(req.url ?? '/', 'http://workbench.invalid')
-      if (url.pathname === `${WORKBENCH_ROUTE_PREFIX}/api/ping`) {
-        respondJson(res, 200, pingResult())
+      const method = decodeURIComponent(url.pathname.slice(`${PREFIX}/api/`.length))
+      let payload: unknown = {}
+      try {
+        if (req.method === 'POST') {
+          const body = await readBody(req, bodyCap)
+          payload = body.byteLength === 0 ? {} : JSON.parse(body.toString('utf8'))
+        } else {
+          const raw = url.searchParams.get('payload')
+          payload = raw === null ? {} : JSON.parse(raw)
+        }
+      } catch (cause) {
+        const message = cause instanceof Error && cause.message === 'body-too-large'
+          ? 'request body exceeds the configured cap'
+          : 'request body is not valid JSON'
+        const code = cause instanceof Error && cause.message === 'body-too-large' ? 'too-large' : 'bad-request'
+        respondJson(res, 200, fail(code, message))
         return
       }
-      respondJson(res, 404, { ok: false, error: { code: 'no-route', message: `unknown workbench route ${url.pathname}` } })
+      try {
+        respondJson(res, 200, await dispatch(method, payload))
+      } catch (cause) {
+        // A handler throwing instead of enveloping is a bug; keep the
+        // process alive and report it loudly to the caller.
+        respondJson(res, 200, fail('handler-crash', cause instanceof Error ? cause.message : String(cause)))
+      }
     },
   }
-  ctx.effect(() => ctx.webServer.register(route), 'workbench: /workbench prefix route')
+
+  const eventsRoute: WebRoute = {
+    kind: 'exact',
+    path: `${PREFIX}/events`,
+    handler: async (req, res) => {
+      if (!isTrustedRequestHost(req.headers, trustedHosts)) {
+        respondJson(res, 403, fail('untrusted-host', 'host header failed the trust fence'))
+        return
+      }
+      const url = new URL(req.url ?? '/', 'http://workbench.invalid')
+      let roots: unknown
+      try {
+        roots = JSON.parse(url.searchParams.get('roots') ?? '[]')
+      } catch {
+        roots = null
+      }
+      if (!Array.isArray(roots)) {
+        res.destroy()
+        return
+      }
+      res.writeHead(200, {
+        'content-type': 'text/event-stream',
+        'cache-control': 'no-cache',
+        connection: 'keep-alive',
+      })
+      const unsubscribe = watchers.subscribe((frame) => {
+        try {
+          res.write(`data: ${JSON.stringify(frame)}\n\n`)
+        } catch {
+          req.destroy()
+        }
+      })
+      const addDisposer = watchers.addRoots(roots.filter((root): root is string => typeof root === 'string'))
+      const heartbeat = setInterval(() => {
+        try {
+          res.write(': heartbeat\n\n')
+        } catch {
+          req.destroy()
+        }
+      }, 25_000)
+      if (typeof heartbeat.unref === 'function') heartbeat.unref()
+      req.on('close', () => {
+        clearInterval(heartbeat)
+        unsubscribe()
+        addDisposer()
+      })
+    },
+  }
+
+  ctx.effect(() => ctx.webServer.register(apiRoute), 'workbench: /workbench/api routes')
+  ctx.effect(() => ctx.webServer.register(eventsRoute), 'workbench: /workbench/events sse')
 }
