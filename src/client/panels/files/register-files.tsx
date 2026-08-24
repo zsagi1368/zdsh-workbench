@@ -34,13 +34,11 @@ class SelectedFile {
   }
 }
 
-export function registerFilesFeature(registry: WorkbenchRegistryApi, storage: Storage | undefined): () => void {
+export function registerFilesFeature(registry: WorkbenchRegistryApi): () => void {
   const api = createApiClient()
   const model = new ExplorerModel(api)
   const selected = new SelectedFile()
 
-  // Restore the last workspace root so reopening the dock lands where the
-  // user left off; storage failures degrade to a blank root.
   // Restore the last workspace root so reopening the dock lands where the
   // user left off; storage failures degrade to a blank root.
   try {

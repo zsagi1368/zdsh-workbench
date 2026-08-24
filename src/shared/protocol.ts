@@ -3,20 +3,17 @@
  * Framework-free: importable from Node routes, browser code, and tests alike.
  */
 
-/** Plugin id as declared in dsh.plugin.json. */
-export const WORKBENCH_PLUGIN_ID = 'zdsh/workbench'
-
 /** npm package name; the cordis loader mounts rows by this name. */
-export const WORKBENCH_PACKAGE_NAME = 'zdsh-workbench'
+export const WORKBENCH_PACKAGE_NAME = '@deepseek-ai/dsh-client-workbench'
 
 /** Every HTTP route and WebSocket upgrade this plugin owns lives under it. */
 export const WORKBENCH_ROUTE_PREFIX = '/workbench'
 
 /**
- * Plugin version. MUST equal package.json "version" and dsh.plugin.json
- * "version"; tests/manifest.spec.ts guards the three-way sync.
+ * Plugin version. MUST equal the package.json "version"; the manifest
+ * client spec guards that two-way sync.
  */
-export const WORKBENCH_VERSION = '0.1.0-beta.1'
+export const WORKBENCH_VERSION = '0.1.1-rc.2-zDSH20260824a'
 
 /** Answer shape of GET/POST `/workbench/api/ping` — the liveness probe used by mount e2e. */
 export interface PingResult {

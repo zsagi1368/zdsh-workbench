@@ -7,13 +7,13 @@
 import { WebSocketServer, type WebSocket } from 'ws'
 import type { Duplex } from 'node:stream'
 import type { IncomingMessage } from 'node:http'
-import type { TerminalClientMessage, TerminalServerMessage } from '../shared/terminal-protocol.ts'
+import type { TerminalClientMessage, TerminalServerMessage } from './shared/terminal-protocol.ts'
 import type { PtyRegistry } from './pty-registry.ts'
 
 /**
  * Pure message handler: one client message in, zero or more server messages
- * out (plus side effects on the registry). Async because `open` may wait on
- * the lazy native-module load.
+ * out (plus side effects on the registry). Synchronous because `open`
+ * resolves its lazy native-module load inside the spawner seam.
  */
 export function createTerminalMessenger(registry: PtyRegistry) {
   const send = (socket: WebSocket, message: TerminalServerMessage): void => {
@@ -21,7 +21,7 @@ export function createTerminalMessenger(registry: PtyRegistry) {
   }
 
   return {
-    async handle(socket: WebSocket, raw: unknown): Promise<void> {
+    handle(socket: WebSocket, raw: unknown): void {
       let parsed: TerminalClientMessage
       try {
         parsed = JSON.parse(String(raw)) as TerminalClientMessage
@@ -29,7 +29,7 @@ export function createTerminalMessenger(registry: PtyRegistry) {
         send(socket, { t: 'error', code: 'bad-frame', message: 'frame is not valid JSON' })
         return
       }
-      const { sessionId, termId } = parsed as TerminalClientMessage
+      const { sessionId, termId } = parsed
       if (typeof sessionId !== 'string' || typeof termId !== 'string') {
         send(socket, { t: 'error', code: 'bad-frame', message: 'sessionId and termId are required' })
         return
@@ -44,7 +44,11 @@ export function createTerminalMessenger(registry: PtyRegistry) {
             onExit: (exitCode) => {
               send(socket, { t: 'exit', sessionId, termId, exitCode })
             },
-          }, { cwd: typeof parsed.cwd === 'string' ? parsed.cwd : undefined, cols: 80, rows: 24 })
+          }, {
+            ...(typeof parsed.cwd === 'string' ? { cwd: parsed.cwd } : {}),
+            cols: 80,
+            rows: 24,
+          })
           if ('error' in result) {
             send(socket, { t: 'error', sessionId, termId, code: result.error, message: result.message })
             return
@@ -56,11 +60,13 @@ export function createTerminalMessenger(registry: PtyRegistry) {
           })
           return
         }
-        case 'input':
-          if (!registry.input(sessionId, termId, String((parsed as { data?: unknown }).data ?? ''))) {
+        case 'input': {
+          const data = (parsed as { data?: unknown }).data
+          if (!registry.input(sessionId, termId, typeof data === 'string' ? data : '')) {
             send(socket, { t: 'error', sessionId, termId, code: 'not-attached', message: 'no live terminal for this id' })
           }
           return
+        }
         case 'resize': {
           const cols = Number((parsed as { cols?: unknown }).cols)
           const rows = Number((parsed as { rows?: unknown }).rows)
@@ -93,7 +99,7 @@ export function acceptTerminalSocket(
   wss.handleUpgrade(req, socket, head, (ws) => {
     const messenger = createTerminalMessenger(registry)
     ws.on('message', (raw) => {
-      void messenger.handle(ws, raw)
+      messenger.handle(ws, raw)
     })
     if (options.detachOnClose !== false) {
       ws.on('close', () => {

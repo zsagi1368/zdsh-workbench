@@ -8,10 +8,9 @@
 import type { Context } from '@deepseek-ai/cordis'
 import type { ServerResponse } from 'node:http'
 import { realpathSync } from 'node:fs'
-import { WORKBENCH_ROUTE_PREFIX as PREFIX, pingResult } from '../shared/protocol.ts'
-import type { WorkbenchRouteEnvelope } from '../shared/protocol-envelope.ts'
+import { WORKBENCH_ROUTE_PREFIX as PREFIX, pingResult } from './shared/protocol.ts'
+import type { WorkbenchRouteEnvelope } from './shared/protocol-envelope.ts'
 import type { WebRoute } from './context-types.ts'
-import './context-types.ts'
 import { createGitHandlers } from './git-routes.ts'
 import { createFsHandlers, readBody, RootCache } from './fs-routes.ts'
 import { TaskLedger } from './task-ledger.ts'
@@ -82,8 +81,8 @@ export function apply(ctx: Context, options?: WorkbenchHostConfig): void {
   const bodyCap = options?.writeBodyLimitBytes ?? DEFAULTS.writeBodyLimitBytes
   const watchers = new FsWatcherManager({ debounceMs: options?.watchDebounceMs ?? DEFAULTS.watchDebounceMs })
   const ptyRegistry = new PtyRegistry({
-    terminalsPerSession: options?.terminalsPerSession,
-    reconnectGraceMs: options?.reconnectGraceMs,
+    ...(options?.terminalsPerSession === undefined ? {} : { terminalsPerSession: options.terminalsPerSession }),
+    ...(options?.reconnectGraceMs === undefined ? {} : { reconnectGraceMs: options.reconnectGraceMs }),
   })
   const rootCache = new RootCache()
   // Workspace clamp: resolve once at boot so the clamp itself cannot be
@@ -99,7 +98,7 @@ export function apply(ctx: Context, options?: WorkbenchHostConfig): void {
   }
   const rootAllowed = (rootReal: string): boolean =>
     allowedRealRoots.length === 0 ||
-    allowedRealRoots.some((allowed) => rootReal === allowed || rootReal.startsWith(allowed + (allowed.includes('\\') ? '\\' : '/')))
+    allowedRealRoots.some(allowed => rootReal === allowed || rootReal.startsWith(allowed + (allowed.includes('\\') ? '\\' : '/')))
 
   const handlers = createFsHandlers(rootCache, {
     readLimitBytes,
@@ -111,11 +110,11 @@ export function apply(ctx: Context, options?: WorkbenchHostConfig): void {
 
   const taskLedger = new TaskLedger()
   const tasksReady = taskLedger.init().catch(() => {})
-  const taskHandlers: Record<string, (payload: unknown) => Promise<WorkbenchRouteEnvelope<unknown>>> = {
-    'tasks.list': async () => taskLedger.list(),
-    'tasks.create': async (payload) => taskLedger.create(payload),
-    'tasks.update': async (payload) => taskLedger.update(payload),
-    'tasks.delete': async (payload) => taskLedger.remove(payload),
+  const taskHandlers: Record<string, (payload: unknown) => WorkbenchRouteEnvelope<unknown> | Promise<WorkbenchRouteEnvelope<unknown>>> = {
+    'tasks.list': () => taskLedger.list(),
+    'tasks.create': payload => taskLedger.create(payload),
+    'tasks.update': payload => taskLedger.update(payload),
+    'tasks.delete': payload => taskLedger.remove(payload),
   }
 
   // Task changes ride the existing SSE channel so every page stays current.

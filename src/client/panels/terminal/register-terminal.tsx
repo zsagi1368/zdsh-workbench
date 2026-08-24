@@ -21,34 +21,34 @@ export function registerTerminalFeature(registry: WorkbenchRegistryApi): () => v
 
       const addTerminal = (): void => {
         if (terminals.length >= MAX_TERMINALS) return
-        const id = Math.max(0, ...terminals.map((terminal) => terminal.id)) + 1
-        setTerminals((previous) => [...previous, { id }])
+        const id = Math.max(0, ...terminals.map(terminal => terminal.id)) + 1
+        setTerminals(previous => [...previous, { id }])
         setActiveId(id)
       }
 
       const closeTerminal = (id: number): void => {
         setTerminals((previous) => {
-          const next = previous.filter((terminal) => terminal.id !== id)
+          const next = previous.filter(terminal => terminal.id !== id)
           if (next.length === 0) return [{ id: id + 1 }]
           if (id === activeId) setActiveId(next[next.length - 1]?.id ?? next[0]?.id ?? id + 1)
           return next
         })
         // Remount key bump so closed ids never collide with fresh ones.
-        setNonce((value) => value + 1)
+        setNonce(value => value + 1)
       }
 
-      const active = terminals.find((terminal) => terminal.id === activeId) ?? terminals[0]
+      const active = terminals.find(terminal => terminal.id === activeId) ?? terminals[0]
       const cwd = getWorkspaceRoot()
 
       return (
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 4 }}>
-            {terminals.map((terminal) => (
+            {terminals.map(terminal => (
               <span key={terminal.id} style={{ display: 'inline-flex', alignItems: 'center' }}>
-                <button className="zdsh-wb-tab" aria-selected={terminal.id === active?.id} onClick={() => setActiveId(terminal.id)}>
+                <button className="zdsh-wb-tab" aria-selected={terminal.id === active?.id} onClick={() =>{  setActiveId(terminal.id) }}>
                   终端 {String(terminal.id)}
                 </button>
-                <button className="zdsh-wb-iconbtn" style={{ fontSize: 9 }} onClick={() => closeTerminal(terminal.id)}>×</button>
+                <button className="zdsh-wb-iconbtn" style={{ fontSize: 9 }} onClick={() =>{  closeTerminal(terminal.id) }}>×</button>
               </span>
             ))}
             {terminals.length < MAX_TERMINALS ? (
@@ -56,7 +56,11 @@ export function registerTerminalFeature(registry: WorkbenchRegistryApi): () => v
             ) : null}
           </div>
           {active !== undefined ? (
-            <TerminalView key={`${active.id}-${nonce}`} termId={`t${active.id}`} cwd={cwd === '' ? undefined : cwd} />
+            <TerminalView
+              key={`${active.id}-${nonce}`}
+              termId={`t${active.id}`}
+              {...(cwd === '' ? {} : { cwd })}
+            />
           ) : null}
         </div>
       )

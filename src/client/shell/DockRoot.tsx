@@ -17,7 +17,7 @@ import { SettingsPanel } from './SettingsPanel.tsx'
 
 function useLayout(store: LayoutStore): ReturnType<LayoutStore['getState']> {
   return useSyncExternalStore(
-    (listener) => store.subscribe(listener),
+    listener => store.subscribe(listener),
     () => store.getState(),
   )
 }
@@ -49,11 +49,11 @@ function PlusMenu(props: {
       document.removeEventListener('mousedown', dismiss)
     }
   }, [onClose])
-  const openIds = new Set(panels.map((panel) => panel.id))
+  const openIds = new Set(panels.map(panel => panel.id))
   return (
     <div className="zdsh-wb-plusmenu" ref={ref} role="menu">
       {panels.length === 0 ? <button className="zdsh-wb-menuitem" disabled>（暂无可用面板）</button> : null}
-      {panels.map((panel) => (
+      {panels.map(panel => (
         <button
           key={panel.id}
           role="menuitem"
@@ -81,7 +81,7 @@ function CommandPalette(props: {
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase()
     if (needle === '') return commands
-    return commands.filter((command) => command.title.toLowerCase().includes(needle) || command.id.toLowerCase().includes(needle))
+    return commands.filter(command => command.title.toLowerCase().includes(needle) || command.id.toLowerCase().includes(needle))
   }, [commands, query])
 
   useEffect(() => {
@@ -105,11 +105,11 @@ function CommandPalette(props: {
         if (event.key === 'Escape') onClose()
         if (event.key === 'ArrowDown') {
           event.preventDefault()
-          setSelected((index) => Math.min(filtered.length - 1, index + 1))
+          setSelected(index => Math.min(filtered.length - 1, index + 1))
         }
         if (event.key === 'ArrowUp') {
           event.preventDefault()
-          setSelected((index) => Math.max(0, index - 1))
+          setSelected(index => Math.max(0, index - 1))
         }
         if (event.key === 'Enter') runAt(selected)
       }}
@@ -119,7 +119,7 @@ function CommandPalette(props: {
           autoFocus
           placeholder="输入命令名…（Enter 执行，Esc 关闭）"
           value={query}
-          onChange={(event) => setQuery(event.target.value)}
+          onChange={(event) =>{  setQuery(event.target.value) }}
           aria-label="workbench command palette"
         />
         <ul role="listbox">
@@ -129,8 +129,8 @@ function CommandPalette(props: {
               <button
                 className="zdsh-wb-menuitem"
                 style={index === selected ? { background: 'var(--zdsh-wb-hover)' } : undefined}
-                onMouseEnter={() => setSelected(index)}
-                onClick={() => runAt(index)}
+                onMouseEnter={() =>{  setSelected(index) }}
+                onClick={() =>{  runAt(index) }}
               >
                 {command.title}
               </button>
@@ -156,7 +156,7 @@ export function DockRoot(props: {
   // Reconcile stored tabs against live registrations whenever either side changes.
   useEffect(() => {
     store.syncRegistrations(registry.getPanels())
-    return registry.subscribe(() => store.syncRegistrations(registry.getPanels()))
+    return registry.subscribe(() =>{  store.syncRegistrations(registry.getPanels()) })
   }, [registry, store])
 
   const [plusOpen, setPlusOpen] = useState(false)
@@ -164,7 +164,7 @@ export function DockRoot(props: {
   const [settingsOpen, setSettingsOpen] = useState(false)
 
   useEffect(() => {
-    const toggle = (): void => setPaletteOpen((open) => !open)
+    const toggle = (): void =>{  setPaletteOpen(open => !open) }
     const collapse = (event: Event): void => {
       const detail = (event as CustomEvent<boolean>).detail
       if (typeof detail === 'boolean') store.setCollapsed(detail)
@@ -177,11 +177,11 @@ export function DockRoot(props: {
     }
   }, [store])
 
-  const byId = useMemo(() => new Map(panels.map((panel) => [panel.id, panel])), [panels])
+  const byId = useMemo(() => new Map(panels.map(panel => [panel.id, panel])), [panels])
   const activeId = layout.activeId
-  const activeTab = layout.tabs.find((tab) => tab.id === activeId) ?? null
+  const activeTab = layout.tabs.find(tab => tab.id === activeId) ?? null
 
-  const palette = paletteOpen ? <CommandPalette commands={[...commands]} onClose={() => setPaletteOpen(false)} /> : null
+  const palette = paletteOpen ? <CommandPalette commands={[...commands]} onClose={() =>{  setPaletteOpen(false) }} /> : null
 
   if (layout.collapsed) {
     return (
@@ -191,7 +191,7 @@ export function DockRoot(props: {
             className="zdsh-wb-iconbtn"
             title="展开工作台"
             aria-label="expand workbench"
-            onClick={() => store.setCollapsed(false)}
+            onClick={() =>{  store.setCollapsed(false) }}
           >
             ◀
           </button>
@@ -213,7 +213,7 @@ export function DockRoot(props: {
                 className="zdsh-wb-tab"
                 aria-selected={tab.id === activeId}
                 title={label}
-                onClick={() => store.activate(tab.id)}
+                onClick={() =>{  store.activate(tab.id) }}
               >
                 {tab.orphan ? '?' : label}
               </button>
@@ -221,7 +221,7 @@ export function DockRoot(props: {
                 className="zdsh-wb-iconbtn"
                 style={{ padding: '3px 5px', opacity: 0.55 }}
                 aria-label={`close ${label}`}
-                onClick={() => store.closeTab(tab.id)}
+                onClick={() =>{  store.closeTab(tab.id) }}
               >
                 ×
               </button>
@@ -229,27 +229,27 @@ export function DockRoot(props: {
           )
         })}
         <span className="zdsh-wb-spacer" />
-        <button className="zdsh-wb-iconbtn" title="打开面板（+）" onClick={() => setPlusOpen((open) => !open)}>＋</button>
-        <button className="zdsh-wb-iconbtn" title="命令面板（Ctrl/Cmd+Shift+P）" onClick={() => setPaletteOpen(true)}>⌘</button>
+        <button className="zdsh-wb-iconbtn" title="打开面板（+）" onClick={() =>{  setPlusOpen(open => !open) }}>＋</button>
+        <button className="zdsh-wb-iconbtn" title="命令面板（Ctrl/Cmd+Shift+P）" onClick={() =>{  setPaletteOpen(true) }}>⌘</button>
         {onPrefsChange !== undefined ? (
-          <button className="zdsh-wb-iconbtn" title="工作台设置" onClick={() => setSettingsOpen((open) => !open)}>⚙</button>
+          <button className="zdsh-wb-iconbtn" title="工作台设置" onClick={() =>{  setSettingsOpen(open => !open) }}>⚙</button>
         ) : null}
-        <button className="zdsh-wb-iconbtn" title="折叠工作台" onClick={() => store.setCollapsed(true)}>▶</button>
+        <button className="zdsh-wb-iconbtn" title="折叠工作台" onClick={() =>{  store.setCollapsed(true) }}>▶</button>
       </div>
 
       {settingsOpen && onPrefsChange !== undefined ? (
         <SettingsPanel
           prefs={prefs}
           onChange={onPrefsChange}
-          onClose={() => setSettingsOpen(false)}
+          onClose={() =>{  setSettingsOpen(false) }}
         />
       ) : null}
 
       {plusOpen ? (
         <PlusMenu
           panels={panels}
-          onOpen={(id) => store.openPanel(id)}
-          onClose={() => setPlusOpen(false)}
+          onOpen={(id) =>{  store.openPanel(id) }}
+          onClose={() =>{  setPlusOpen(false) }}
         />
       ) : null}
 
@@ -263,7 +263,7 @@ export function DockRoot(props: {
         ) : activeTab.orphan ? (
           <div className="zdsh-wb-orphan">
             面板「{activeId}」的提供者未加载。
-            <button className="zdsh-wb-menuitem" onClick={() => store.closeTab(activeId)}>关闭此页签</button>
+            <button className="zdsh-wb-menuitem" onClick={() =>{  store.closeTab(activeId) }}>关闭此页签</button>
           </div>
         ) : (
           <PanelBody registry={registry} id={activeId} store={store} />
@@ -296,7 +296,7 @@ export function DockRoot(props: {
 }
 
 function PanelBody(props: { registry: WorkbenchRegistryApi; id: string; store: LayoutStore }): React.ReactNode {
-  const panel = props.registry.getPanels().find((candidate) => candidate.id === props.id)
+  const panel = props.registry.getPanels().find(candidate => candidate.id === props.id)
   const component = panel?.component
   if (component === undefined) {
     return (
@@ -308,7 +308,7 @@ function PanelBody(props: { registry: WorkbenchRegistryApi; id: string; store: L
   }
   return component({
     visible: true,
-    openPanel: (panelId: string) => props.store.openPanel(panelId),
-    close: () => props.store.closeTab(props.id),
+    openPanel: (panelId: string) =>{  props.store.openPanel(panelId) },
+    close: () =>{  props.store.closeTab(props.id) },
   })
 }

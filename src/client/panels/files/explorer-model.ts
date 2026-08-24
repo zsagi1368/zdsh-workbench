@@ -47,7 +47,7 @@ export class ExplorerModel {
     this.error = null
     this.notify()
     try {
-      const result = await this.api.call<{ cwd: string; path: string }, FsTreeResult>('fs.tree', { cwd: this.root, path: dir })
+      const result = await this.api.call<FsTreeResult>('fs.tree', { cwd: this.root, path: dir })
       this.entriesByDir.set(result.path, result.entries)
       if (result.truncated) this.truncatedDirs.add(result.path)
       else this.truncatedDirs.delete(result.path)
@@ -103,10 +103,9 @@ export class ExplorerModel {
   async search(query: string): Promise<FsSearchResult> {
     const trimmed = query.trim()
     if (trimmed === '') return { matches: [], truncated: false }
-    return this.api.call<{ query: string; cwd?: string; root?: string }, FsSearchResult>('fs.search', {
+    return this.api.call<FsSearchResult>('fs.search', {
       query: trimmed,
-      cwd: this.root === '' ? undefined : this.root,
-      root: this.root === '' ? undefined : this.root,
+      ...(this.root === '' ? {} : { cwd: this.root, root: this.root }),
     })
   }
 

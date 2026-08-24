@@ -52,7 +52,7 @@ export function mountDock(
   const container = document.createElement('div')
   container.id = DOCK_CONTAINER_ID
   document.body.appendChild(container)
-  disposers.push(() => container.remove())
+  disposers.push(() =>{  container.remove() })
 
   let activeHotkeyDisposer = prefs.paletteHotkey ? attachPaletteHotkey() : undefined
   if (activeHotkeyDisposer !== undefined) disposers.push(activeHotkeyDisposer)
@@ -64,7 +64,14 @@ export function mountDock(
   if (prefs.startCollapsed && storedLayout === undefined) store.setCollapsed(true)
 
   const root = createRoot(container)
-  root.render(<DockRoot registry={registry} store={store} prefs={prefs} onPrefsChange={options.onPrefsChange} />)
+  root.render(
+    <DockRoot
+      registry={registry}
+      store={store}
+      prefs={prefs}
+      {...(options.onPrefsChange === undefined ? {} : { onPrefsChange: options.onPrefsChange })}
+    />,
+  )
 
   return {
     store,

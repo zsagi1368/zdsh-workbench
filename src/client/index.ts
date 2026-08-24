@@ -30,8 +30,8 @@ declare module '@deepseek-ai/cordis' {
 function wireBuiltInCommands(registry: WorkbenchRegistryApi): () => void {
   const disposers = [
     registry.registerCommand({ id: 'workbench:palette', title: '工作台：打开命令面板', run: togglePalette }),
-    registry.registerCommand({ id: 'workbench:collapse', title: '工作台：折叠侧栏', run: () => setCollapsed(true) }),
-    registry.registerCommand({ id: 'workbench:expand', title: '工作台：展开侧栏', run: () => setCollapsed(false) }),
+    registry.registerCommand({ id: 'workbench:collapse', title: '工作台：折叠侧栏', run: () =>{  setCollapsed(true) } }),
+    registry.registerCommand({ id: 'workbench:expand', title: '工作台：展开侧栏', run: () =>{  setCollapsed(false) } }),
   ]
   return () => {
     for (const dispose of disposers) dispose()
@@ -43,10 +43,7 @@ export function apply(ctx: Context): void {
   ctx.provide('workbench', registry)
 
   const disposeCommands = wireBuiltInCommands(registry)
-  const disposeFiles = registerFilesFeature(
-    registry,
-    typeof window !== 'undefined' ? window.localStorage : undefined,
-  )
+  const disposeFiles = registerFilesFeature(registry)
   const disposeTerminal = registerTerminalFeature(registry)
   const disposeGit = registerGitFeature(registry)
   const disposeTasks = registerTasksFeature(registry)

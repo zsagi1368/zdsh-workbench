@@ -52,7 +52,7 @@ export function TerminalView(props: { cwd?: string; termId: string }): React.Rea
     const decoder = new TextDecoder('utf-8')
 
     const decodeBase64 = (base64: string): string =>
-      decoder.decode(Uint8Array.from(atob(base64), (char) => char.charCodeAt(0)))
+      decoder.decode(Uint8Array.from(atob(base64), char => char.charCodeAt(0)))
 
     const sessionId = 'web'
     const termId = props.termId
@@ -72,7 +72,7 @@ export function TerminalView(props: { cwd?: string; termId: string }): React.Rea
       socket.onmessage = (event) => {
         let message: import('../../../shared/terminal-protocol.ts').TerminalServerMessage
         try {
-          message = JSON.parse(String(event.data))
+          message = JSON.parse(String(event.data)) as typeof message
         } catch {
           return
         }
@@ -141,7 +141,7 @@ export function TerminalView(props: { cwd?: string; termId: string }): React.Rea
       ) : null}
       <div ref={hostRef} style={{ minHeight: 320 }} />
       {phase.status === 'exited' ? (
-        <button className="zdsh-wb-tab" onClick={() => setPhase({ status: 'connecting' })}>重新启动终端</button>
+        <button className="zdsh-wb-tab" onClick={() =>{  setPhase({ status: 'connecting' }) }}>重新启动终端</button>
       ) : null}
     </div>
   )

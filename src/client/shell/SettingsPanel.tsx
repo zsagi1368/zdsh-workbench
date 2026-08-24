@@ -9,8 +9,8 @@ import type { WorkbenchPrefs } from './prefs.ts'
  */
 export function SettingsPanel(props: {
   prefs: WorkbenchPrefs
-  onChange(next: WorkbenchPrefs): void
-  onClose(): void
+  onChange: (next: WorkbenchPrefs) => void
+  onClose: () => void
 }): React.ReactNode {
   const { prefs, onChange, onClose } = props
   const [error, setError] = useState<string | null>(null)
@@ -30,7 +30,7 @@ export function SettingsPanel(props: {
         <input
           type="checkbox"
           checked={prefs.startCollapsed}
-          onChange={(event) => set({ startCollapsed: event.target.checked })}
+          onChange={(event) =>{  set({ startCollapsed: event.target.checked }) }}
         />
         启动时折叠侧栏
       </label>
@@ -38,7 +38,7 @@ export function SettingsPanel(props: {
         <input
           type="checkbox"
           checked={prefs.paletteHotkey}
-          onChange={(event) => set({ paletteHotkey: event.target.checked })}
+          onChange={(event) =>{  set({ paletteHotkey: event.target.checked }) }}
         />
         启用 Ctrl/Cmd+Shift+P 热键
       </label>

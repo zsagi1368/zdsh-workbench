@@ -75,5 +75,5 @@ export function isTrustedRequestHost(headers: IncomingHttpHeaders, trustedEntrie
   if (trustedEntries.length === 0) return false
   const requested = canonicalAuthority(host)
   if (requested === undefined) return false
-  return trustedEntries.some((entry) => canonicalAuthority(entry) === requested)
+  return trustedEntries.some(entry => canonicalAuthority(entry) === requested)
 }

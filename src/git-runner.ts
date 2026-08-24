@@ -81,7 +81,11 @@ export async function runGit(
 }
 
 /** Guard one repo-relative-or-absolute path against the workspace root. */
-export async function guardRepoPath(rootCache: RootCache, cwd: unknown, value: unknown): Promise<{ rootReal: string; repoPath: string } | null> {
+export async function guardRepoPath(
+  rootCache: RootCache,
+  cwd: unknown,
+  value: unknown,
+): Promise<{ rootReal: string; repoPath: string } | null> {
   if (typeof cwd !== 'string' || cwd === '' || typeof value !== 'string' || value === '') return null
   const rootReal = await rootCache.rootOf(cwd)
   if (typeof rootReal !== 'string') return null

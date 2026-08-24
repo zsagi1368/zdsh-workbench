@@ -71,7 +71,7 @@ export function TasksPanel(props: { api: ApiClient }): React.ReactNode {
           style={{ flex: 1, minWidth: 0 }}
           placeholder="新任务标题…（Enter 添加）"
           value={draft}
-          onChange={(event) => setDraft(event.target.value)}
+          onChange={(event) =>{  setDraft(event.target.value) }}
           onKeyDown={(event) => {
             if (event.key === 'Enter') void add()
           }}
@@ -80,12 +80,12 @@ export function TasksPanel(props: { api: ApiClient }): React.ReactNode {
       </div>
       {error !== null ? <div className="zdsh-wb-orphan">{error}</div> : null}
       <div style={{ display: 'flex', gap: 6 }}>
-        {TASK_STATUSES.map((status) => (
+        {TASK_STATUSES.map(status => (
           <div key={status} style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontWeight: 600, fontSize: 12, opacity: 0.8, marginBottom: 4 }}>
-              {COLUMN_TITLES[status]} · {snapshot?.tasks.filter((task) => task.status === status).length ?? 0}
+              {COLUMN_TITLES[status]} · {snapshot?.tasks.filter(task => task.status === status).length ?? 0}
             </div>
-            {(snapshot?.tasks ?? []).filter((task) => task.status === status).map((task) => (
+            {(snapshot?.tasks ?? []).filter(task => task.status === status).map(task => (
               <div key={task.id} className="zdsh-wb-menuitem" style={{ border: '1px solid var(--zdsh-wb-border)', borderRadius: 6, marginBottom: 4, padding: '4px 6px' }}>
                 <div style={{ wordBreak: 'break-all', marginBottom: 2 }}>{task.title}</div>
                 <div style={{ display: 'flex', gap: 2 }}>

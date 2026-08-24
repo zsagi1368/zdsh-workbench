@@ -24,7 +24,7 @@ export function FileView(props: {
     setState({ status: 'loading' })
     setDraft(null)
     void api
-      .call<{ cwd: string; path: string }, FsReadResult>('fs.read', { cwd: getWorkspaceRoot(), path })
+      .call<FsReadResult>('fs.read', { cwd: getWorkspaceRoot(), path })
       .then((result) => {
         if (alive) setState({ status: 'ready', result })
       })
@@ -40,7 +40,7 @@ export function FileView(props: {
     if (draft === null) return
     setSaving(true)
     try {
-      await api.call<{ cwd: string; path: string; content: string }, unknown>('fs.write', { cwd: getWorkspaceRoot(), path, content: draft })
+      await api.call<unknown>('fs.write', { cwd: getWorkspaceRoot(), path, content: draft })
       setState({ status: 'ready', result: { kind: 'text', content: draft, truncated: false, size: draft.length } })
       setDraft(null)
     } finally {
@@ -59,7 +59,9 @@ export function FileView(props: {
     if (kind === 'image') {
       return (
         <div>
-          <div style={{ fontWeight: 600, marginBottom: 4 }}>{name} <span style={{ opacity: 0.6, fontSize: 11 }}>({result.size} 字节)</span></div>
+          <div style={{ fontWeight: 600, marginBottom: 4 }}>
+            {name} <span style={{ opacity: 0.6, fontSize: 11 }}>({result.size} 字节)</span>
+          </div>
           <img src={media} alt={name} style={{ maxWidth: '100%', borderRadius: 6, border: '1px solid var(--zdsh-wb-border)' }} />
         </div>
       )
@@ -118,7 +120,7 @@ export function FileView(props: {
         value={draft ?? result.content}
         readOnly={result.truncated}
         spellCheck={false}
-        onChange={(event) => setDraft(event.target.value)}
+        onChange={(event) =>{  setDraft(event.target.value) }}
         onKeyDown={(event) => {
           if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's') {
             event.preventDefault()

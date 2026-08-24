@@ -27,8 +27,8 @@ async function parseEnvelope<T>(response: Response): Promise<T> {
     throw new ApiError('bad-response', `workbench api returned non-JSON (HTTP ${response.status})`)
   }
   const envelope = parsed as Envelope<T>
-  if (envelope.ok === true && envelope.value !== undefined) return envelope.value
-  if (envelope.ok === false && envelope.error !== undefined) {
+  if (envelope.ok && envelope.value !== undefined) return envelope.value
+  if (!envelope.ok && envelope.error !== undefined) {
     throw new ApiError(envelope.error.code, envelope.error.message)
   }
   throw new ApiError('bad-envelope', 'workbench api response had neither value nor error')
@@ -36,7 +36,7 @@ async function parseEnvelope<T>(response: Response): Promise<T> {
 
 export interface ApiClient {
   /** POST `/workbench/api/<method>` with a JSON body, unwrapping the envelope. */
-  call<TRequest, TResult>(method: string, payload?: TRequest): Promise<TResult>
+  call<TResult>(method: string, payload?: unknown): Promise<TResult>
 }
 
 export function createApiClient(baseUrl = ''): ApiClient {
@@ -67,7 +67,7 @@ export function subscribeFsEvents(
   const controller = new AbortController()
   const signal = options.signal
   if (signal !== undefined) {
-    signal.addEventListener('abort', () => controller.abort(), { once: true })
+    signal.addEventListener('abort', () =>{  controller.abort() }, { once: true })
   }
   let attempt = 0
   let stopped = false
@@ -79,8 +79,8 @@ export function subscribeFsEvents(
     const source = new EventSource(url)
     source.onmessage = (message) => {
       try {
-        const frame = JSON.parse(message.data) as FsEventsFrame
-        if (frame.domain === 'fs') onFrame(frame)
+        const frame = JSON.parse(String(message.data)) as { domain?: unknown }
+        if (frame.domain === 'fs') onFrame(frame as FsEventsFrame)
       } catch {
         // Malformed frame: ignore, the stream stays healthy.
       }

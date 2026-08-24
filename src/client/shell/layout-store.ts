@@ -74,8 +74,8 @@ function sameTabs(a: readonly LayoutTab[], b: readonly LayoutTab[]): boolean {
  * orphan whose provider re-registers flips back to live automatically.
  */
 export function reconcileTabs(stored: LayoutTab[], panels: readonly RegisteredPanel[]): LayoutTab[] {
-  const claimed = new Set(panels.map((panel) => panel.id))
-  return stored.map((tab) => ({ ...tab, orphan: !claimed.has(tab.id) }))
+  const claimed = new Set(panels.map(panel => panel.id))
+  return stored.map(tab => ({ ...tab, orphan: !claimed.has(tab.id) }))
 }
 
 /**
@@ -85,8 +85,8 @@ export function reconcileTabs(stored: LayoutTab[], panels: readonly RegisteredPa
  * Otherwise prefer the first live tab, then any remaining tab, else null.
  */
 export function resolveActive(tabs: readonly LayoutTab[], storedActiveId: string | null): string | null {
-  if (storedActiveId !== null && tabs.some((tab) => tab.id === storedActiveId)) return storedActiveId
-  const firstLive = tabs.find((tab) => !tab.orphan)
+  if (storedActiveId !== null && tabs.some(tab => tab.id === storedActiveId)) return storedActiveId
+  const firstLive = tabs.find(tab => !tab.orphan)
   return firstLive?.id ?? tabs[0]?.id ?? null
 }
 
@@ -163,26 +163,26 @@ export class LayoutStore {
 
   openPanel(panelId: string): void {
     const current = this.state
-    if (current.tabs.some((tab) => tab.id === panelId && !tab.orphan)) {
+    if (current.tabs.some(tab => tab.id === panelId && !tab.orphan)) {
       this.commit({ ...current, activeId: panelId })
       return
     }
-    const tabs = [...current.tabs.filter((tab) => tab.id !== panelId), { id: panelId, orphan: false }]
+    const tabs = [...current.tabs.filter(tab => tab.id !== panelId), { id: panelId, orphan: false }]
     this.commit({ ...current, tabs, activeId: panelId })
   }
 
   closeTab(tabId: string): void {
     const current = this.state
-    const index = current.tabs.findIndex((tab) => tab.id === tabId)
+    const index = current.tabs.findIndex(tab => tab.id === tabId)
     if (index === -1) return
-    const tabs = current.tabs.filter((tab) => tab.id !== tabId)
+    const tabs = current.tabs.filter(tab => tab.id !== tabId)
     const activeId = current.activeId === tabId ? resolveActive(tabs, null) : current.activeId
     this.commit({ ...current, tabs, activeId })
   }
 
   activate(tabId: string): void {
     if (this.state.activeId === tabId) return
-    if (!this.state.tabs.some((tab) => tab.id === tabId)) return
+    if (!this.state.tabs.some(tab => tab.id === tabId)) return
     this.commit({ ...this.state, activeId: tabId })
   }
 

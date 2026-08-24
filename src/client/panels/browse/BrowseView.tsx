@@ -20,11 +20,11 @@ export function BrowseView(): React.ReactNode {
   const [draft, setDraft] = useState('')
   const [error, setError] = useState<string | null>(null)
 
-  const active = tabs.find((tab) => tab.id === activeId) ?? tabs[0]
+  const active = tabs.find(tab => tab.id === activeId) ?? tabs[0]
   const currentUrl = active !== undefined && active.index >= 0 ? active.stack[active.index] ?? null : null
 
   function updateActive(mutate: (tab: BrowseTab) => BrowseTab): void {
-    setTabs((previous) => previous.map((tab) => (tab.id === activeId ? mutate(tab) : tab)))
+    setTabs(previous => previous.map(tab => (tab.id === activeId ? mutate(tab) : tab)))
   }
 
   function navigate(raw: string): void {
@@ -34,7 +34,7 @@ export function BrowseView(): React.ReactNode {
       return
     }
     setError(null)
-    updateActive((tab) => ({
+    updateActive(tab => ({
       ...tab,
       // A new navigation truncates the forward branch of the stack.
       stack: [...tab.stack.slice(0, tab.index + 1), verdict.url],
@@ -43,19 +43,19 @@ export function BrowseView(): React.ReactNode {
   }
 
   function addTab(): void {
-    const id = Math.max(0, ...tabs.map((tab) => tab.id)) + 1
-    setTabs((previous) => [...previous, { id, stack: [], index: -1 }])
+    const id = Math.max(0, ...tabs.map(tab => tab.id)) + 1
+    setTabs(previous => [...previous, { id, stack: [], index: -1 }])
     setActiveId(id)
   }
 
   function closeTab(id: number): void {
     setTabs((previous) => {
-      const next = previous.filter((tab) => tab.id !== id)
+      const next = previous.filter(tab => tab.id !== id)
       if (next.length === 0) return [{ id: id + 1, stack: [], index: -1 }]
       return next
     })
     if (id === activeId) {
-      const remaining = tabs.filter((tab) => tab.id !== id)
+      const remaining = tabs.filter(tab => tab.id !== id)
       setActiveId(remaining[remaining.length - 1]?.id ?? id + 1)
     }
   }
@@ -66,18 +66,18 @@ export function BrowseView(): React.ReactNode {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 380 }}>
       <div className="zdsh-wb-rail" style={{ borderBottom: 'none' }}>
-        {tabs.map((tab) => (
+        {tabs.map(tab => (
           <span key={tab.id} style={{ display: 'inline-flex', alignItems: 'center' }}>
             <button
               className="zdsh-wb-tab"
               aria-selected={tab.id === activeId}
               title={tab.stack[tab.index] ?? '空白页'}
-              onClick={() => setActiveId(tab.id)}
+              onClick={() =>{  setActiveId(tab.id) }}
             >
               {tab.id === activeId ? '◉ ' : ''}
               {tab.stack.length === 0 ? '新标签' : safeLabel(tab.stack[tab.index] ?? '')}
             </button>
-            <button className="zdsh-wb-iconbtn" style={{ fontSize: 10 }} onClick={() => closeTab(tab.id)}>×</button>
+            <button className="zdsh-wb-iconbtn" style={{ fontSize: 10 }} onClick={() =>{  closeTab(tab.id) }}>×</button>
           </span>
         ))}
         <button className="zdsh-wb-iconbtn" title="新建标签" onClick={addTab}>＋</button>
@@ -86,18 +86,18 @@ export function BrowseView(): React.ReactNode {
       </div>
 
       <div style={{ display: 'flex', gap: 4, margin: '6px 0' }}>
-        <button className="zdsh-wb-iconbtn" disabled={!canBack} onClick={() => updateActive((tab) => ({ ...tab, index: Math.max(0, tab.index - 1) }))}>◀</button>
-        <button className="zdsh-wb-iconbtn" disabled={!canForward} onClick={() => updateActive((tab) => ({ ...tab, index: Math.min(tab.stack.length - 1, tab.index + 1) }))}>▶</button>
+        <button className="zdsh-wb-iconbtn" disabled={!canBack} onClick={() =>{  updateActive(tab => ({ ...tab, index: Math.max(0, tab.index - 1) })) }}>◀</button>
+        <button className="zdsh-wb-iconbtn" disabled={!canForward} onClick={() =>{  updateActive(tab => ({ ...tab, index: Math.min(tab.stack.length - 1, tab.index + 1) })) }}>▶</button>
         <input
           style={{ flex: 1, minWidth: 0 }}
           placeholder="搜索或输入网址（http/https）"
           value={draft}
-          onChange={(event) => setDraft(event.target.value)}
+          onChange={(event) =>{  setDraft(event.target.value) }}
           onKeyDown={(event) => {
             if (event.key === 'Enter') navigate(draft)
           }}
         />
-        <button className="zdsh-wb-tab" onClick={() => navigate(draft)}>前往</button>
+        <button className="zdsh-wb-tab" onClick={() =>{  navigate(draft) }}>前往</button>
         {currentUrl !== null ? (
           <button className="zdsh-wb-tab" title="在系统浏览器打开" onClick={() => window.open(currentUrl, '_blank')}>↗</button>
         ) : null}

@@ -7,16 +7,16 @@
 import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { randomBytes } from 'node:crypto'
-import { envelopeFail, envelopeOk } from '../shared/protocol-envelope.ts'
-import type { WorkbenchRouteEnvelope } from '../shared/protocol-envelope.ts'
+import { envelopeFail, envelopeOk } from './shared/protocol-envelope.ts'
+import type { WorkbenchRouteEnvelope } from './shared/protocol-envelope.ts'
 import type {
   TaskCreateRequest,
   TaskDeleteRequest,
   TaskSnapshot,
   TaskStatus,
   TaskUpdateRequest,
-} from '../shared/task-protocol.ts'
-import { TASK_STATUSES } from '../shared/task-protocol.ts'
+} from './shared/task-protocol.ts'
+import { TASK_STATUSES } from './shared/task-protocol.ts'
 
 export interface TaskLedgerOptions {
   /** Absolute file path of the backing document. */
@@ -73,8 +73,8 @@ export class TaskLedger {
         if (
           typeof parsed.revision === 'number' && parsed.revision >= 0 &&
           Array.isArray(parsed.tasks) &&
-          parsed.tasks.every((task) =>
-            typeof task?.id === 'string' && typeof task?.title === 'string' && isStatus(task?.status))
+          parsed.tasks.every(task =>
+            typeof task.id === 'string' && typeof task.title === 'string' && isStatus(task.status))
         ) {
           this.snapshot = { revision: parsed.revision, tasks: parsed.tasks }
           return
@@ -140,31 +140,31 @@ export class TaskLedger {
   update(payload: unknown): Promise<WorkbenchRouteEnvelope<TaskSnapshot>> {
     const request = payload as Partial<TaskUpdateRequest>
     const id = typeof request.id === 'string' ? request.id : ''
-    const existing = this.snapshot.tasks.find((task) => task.id === id)
+    const existing = this.snapshot.tasks.find(task => task.id === id)
     if (existing === undefined) return Promise.resolve(envelopeFail('not-found', 'no such task'))
     if (request.status !== undefined && !isStatus(request.status)) {
       return Promise.resolve(envelopeFail('bad-request', 'invalid status'))
     }
     const title = typeof request.title === 'string' ? request.title.trim() : undefined
-    return this.commit(() => this.snapshot.tasks.map((task) =>
+    return this.commit(() => this.snapshot.tasks.map(task =>
       task.id !== id
         ? task
         : {
-            ...task,
-            title: title !== undefined && title !== '' ? title.slice(0, TITLE_MAX) : task.title,
-            status: isStatus(request.status) ? request.status : task.status,
-            updatedAt: Date.now(),
-          },
+          ...task,
+          title: title !== undefined && title !== '' ? title.slice(0, TITLE_MAX) : task.title,
+          status: isStatus(request.status) ? request.status : task.status,
+          updatedAt: Date.now(),
+        },
     ))
   }
 
   remove(payload: unknown): Promise<WorkbenchRouteEnvelope<TaskSnapshot>> {
     const request = payload as Partial<TaskDeleteRequest>
     const id = typeof request.id === 'string' ? request.id : ''
-    if (!this.snapshot.tasks.some((task) => task.id === id)) {
+    if (!this.snapshot.tasks.some(task => task.id === id)) {
       return Promise.resolve(envelopeFail('not-found', 'no such task'))
     }
-    return this.commit(() => this.snapshot.tasks.filter((task) => task.id !== id))
+    return this.commit(() => this.snapshot.tasks.filter(task => task.id !== id))
   }
 }
 

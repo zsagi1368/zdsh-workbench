@@ -1,5 +1,4 @@
 import { useEffect, useState, useSyncExternalStore } from 'react'
-import type { PanelComponentProps } from '../../registry.ts'
 import { sortEntries } from './explorer-model.ts'
 import type { ExplorerModel } from './explorer-model.ts'
 import type { FsEntry } from '../../../shared/fs-protocol.ts'
@@ -12,7 +11,7 @@ import type { FsEntry } from '../../../shared/fs-protocol.ts'
 export function Explorer(props: { model: ExplorerModel; onOpenFile: (path: string) => void }): React.ReactNode {
   const { model, onOpenFile } = props
   useSyncExternalStore(
-    (listener) => model.subscribe(listener),
+    listener => model.subscribe(listener),
     () => model.selected, // re-render on any mutation; cheap reads below
   )
   const [rootDraft, setRootDraft] = useState(model.root)
@@ -22,11 +21,10 @@ export function Explorer(props: { model: ExplorerModel; onOpenFile: (path: strin
   // Re-render on every model notify (selected is only one of many fields;
   // subscribe via a counter so any change rerenders).
   const [, force] = useState(0)
-  useEffect(() => model.subscribe(() => force((value) => value + 1)), [model])
+  useEffect(() => model.subscribe(() =>{  force(value => value + 1) }), [model])
 
   useEffect(() => {
     if (model.root === '' && rootDraft !== '') void handleOpen()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   async function handleOpen(): Promise<void> {
@@ -78,7 +76,7 @@ export function Explorer(props: { model: ExplorerModel; onOpenFile: (path: strin
   function renderChildren(dir: string, depth: number): React.ReactNode {
     const entries = model.entriesOf(dir)
     if (entries === undefined) return <div style={{ paddingLeft: depth * 14 + 20, opacity: 0.5 }}>…</div>
-    return sortEntries(entries).map((entry) => renderEntry(entry, depth))
+    return sortEntries(entries).map(entry => renderEntry(entry, depth))
   }
 
   const crumbs = model.cwd === '' ? [] : model.cwd.split(/[/\\]+/).filter(Boolean)
@@ -90,7 +88,7 @@ export function Explorer(props: { model: ExplorerModel; onOpenFile: (path: strin
           style={{ flex: 1, minWidth: 0 }}
           placeholder="工作区根目录（绝对路径）"
           value={rootDraft}
-          onChange={(event) => setRootDraft(event.target.value)}
+          onChange={(event) =>{  setRootDraft(event.target.value) }}
           onKeyDown={(event) => {
             if (event.key === 'Enter') void handleOpen()
           }}
@@ -101,7 +99,7 @@ export function Explorer(props: { model: ExplorerModel; onOpenFile: (path: strin
       {model.root !== '' ? (
         <>
           <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap', fontSize: 12, opacity: 0.85 }}>
-            <button className="zdsh-wb-iconbtn" title="上一级" onClick={() => model.up()} disabled={model.cwd === model.root}>↑</button>
+            <button className="zdsh-wb-iconbtn" title="上一级" onClick={() =>{  model.up() }} disabled={model.cwd === model.root}>↑</button>
             <button className="zdsh-wb-iconbtn" title="刷新" onClick={() => void model.loadDir(model.cwd, { force: true })}>⟳</button>
             <span style={{ wordBreak: 'break-all' }}>{crumbs.length > 0 ? crumbs.join(' / ') : model.cwd}</span>
           </div>
@@ -111,13 +109,13 @@ export function Explorer(props: { model: ExplorerModel; onOpenFile: (path: strin
               style={{ flex: 1, minWidth: 0 }}
               placeholder="按名称搜索…"
               value={searchDraft}
-              onChange={(event) => setSearchDraft(event.target.value)}
+              onChange={(event) =>{  setSearchDraft(event.target.value) }}
               onKeyDown={(event) => {
                 if (event.key === 'Enter') void runSearch()
               }}
             />
             <button className="zdsh-wb-tab" onClick={() => void runSearch()}>搜索</button>
-            {searchResults !== null ? <button className="zdsh-wb-tab" onClick={() => setSearchResults(null)}>取消</button> : null}
+            {searchResults !== null ? <button className="zdsh-wb-tab" onClick={() =>{  setSearchResults(null) }}>取消</button> : null}
           </div>
 
           {model.error !== null ? <div className="zdsh-wb-orphan">{model.error}</div> : null}
@@ -126,7 +124,7 @@ export function Explorer(props: { model: ExplorerModel; onOpenFile: (path: strin
           {searchResults !== null ? (
             searchResults.length === 0
               ? <div className="zdsh-wb-orphan">无匹配结果</div>
-              : searchResults.map((match) => (
+              : searchResults.map(match => (
                 <div
                   key={match.path}
                   className="zdsh-wb-menuitem"

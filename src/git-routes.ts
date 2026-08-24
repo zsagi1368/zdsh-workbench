@@ -5,8 +5,8 @@
  * only with explicit confirmation; without it they answer a read-only
  * preview so the client can show what WOULD happen.
  */
-import { envelopeFail, envelopeOk } from '../shared/protocol-envelope.ts'
-import type { WorkbenchRouteEnvelope } from '../shared/protocol-envelope.ts'
+import { envelopeFail, envelopeOk } from './shared/protocol-envelope.ts'
+import type { WorkbenchRouteEnvelope } from './shared/protocol-envelope.ts'
 import {
   guardRepoPath,
   NETWORK_TIMEOUT_MS,
@@ -47,7 +47,11 @@ function failResult(result: GitRunResult): WorkbenchRouteEnvelope<never> {
   return fail(result.code === 128 ? 'not-a-repository' : 'git-error', result.stderr)
 }
 
-async function requireRoot(rootCache: RootCache, cwd: unknown, rootAllowed?: (rootReal: string) => boolean): Promise<{ rootReal: string } | WorkbenchRouteEnvelope<never>> {
+async function requireRoot(
+  rootCache: RootCache,
+  cwd: unknown,
+  rootAllowed?: (rootReal: string) => boolean,
+): Promise<{ rootReal: string } | WorkbenchRouteEnvelope<never>> {
   if (typeof cwd !== 'string' || cwd === '') return envelopeFail('bad-request', 'cwd is required')
   const rootReal = await rootCache.rootOf(cwd)
   if (typeof rootReal !== 'string') return envelopeFail('bad-request', 'cwd is not an existing directory')
@@ -68,7 +72,11 @@ async function sanitizeRepoPath(rootReal: string, value: string): Promise<string
   return verdict.allowed ? verdict.target.slice(rootReal.length + 1).replace(/^[\\/]/, '') : null
 }
 
-async function guardAllPaths(rootCache: RootCache, payload: Record<string, unknown>, rootAllowed?: (rootReal: string) => boolean): Promise<{ rootReal: string; repoPaths: string[] } | WorkbenchRouteEnvelope<never>> {
+async function guardAllPaths(
+  rootCache: RootCache,
+  payload: Record<string, unknown>,
+  rootAllowed?: (rootReal: string) => boolean,
+): Promise<{ rootReal: string; repoPaths: string[] } | WorkbenchRouteEnvelope<never>> {
   const raw = payload.paths
   const paths = Array.isArray(raw) ? raw.filter((entry): entry is string => typeof entry === 'string') : []
   if (paths.length === 0) return envelopeFail('bad-request', 'paths array is required')
@@ -94,7 +102,7 @@ export function createGitHandlers(deps: GitRouteDeps): Map<string, Handler> {
     if (!('rootReal' in root)) return root
     const result = await opStatus(root.rootReal)
     if (result.code !== 0) return failResult(result)
-    const lines = result.stdout.split('\n').filter((line) => line !== '')
+    const lines = result.stdout.split('\n').filter(line => line !== '')
     let branch = ''
     let ahead = 0
     let behind = 0
@@ -154,7 +162,7 @@ export function createGitHandlers(deps: GitRouteDeps): Map<string, Handler> {
     const limit = typeof payload.limit === 'number' && payload.limit > 0 ? Math.min(Math.floor(payload.limit), 200) : 50
     const result = await opLog(root.rootReal, limit)
     if (result.code !== 0) return failResult(result)
-    const commits = result.stdout.split('\n').filter((line) => line !== '').map((line) => {
+    const commits = result.stdout.split('\n').filter(line => line !== '').map((line) => {
       const [hash, author, at, subject] = line.split('\x1f')
       return { hash: hash ?? '', author: author ?? '', at: Number(at ?? 0), subject: subject ?? '' }
     })
@@ -167,11 +175,11 @@ export function createGitHandlers(deps: GitRouteDeps): Map<string, Handler> {
     if (!('rootReal' in root)) return root
     const result = await opBranches(root.rootReal)
     if (result.code !== 0) return failResult(result)
-    const branches = result.stdout.split('\n').filter((line) => line !== '').map((line) => {
+    const branches = result.stdout.split('\n').filter(line => line !== '').map((line) => {
       const [name, short] = line.split('\t')
       return { name: name?.trim() ?? '', hash: short?.trim() ?? '' }
     })
-    return envelopeOk({ branches, current: branches.find((branch) => !branch.name.startsWith('remotes/'))?.name ?? '' })
+    return envelopeOk({ branches, current: branches.find(branch => !branch.name.startsWith('remotes/'))?.name ?? '' })
   })
 
   handlers.set('git.stage', async (raw) => {
@@ -217,7 +225,7 @@ export function createGitHandlers(deps: GitRouteDeps): Map<string, Handler> {
       if (payload.confirm !== true) {
         const remotes = await opRemotes(root.rootReal)
         const status = await opStatus(root.rootReal)
-        const branchLine = status.stdout.split('\n').find((line) => line.startsWith('## ')) ?? ''
+        const branchLine = status.stdout.split('\n').find(line => line.startsWith('## ')) ?? ''
         return envelopeOk({
           requiresConfirmation: true,
           action,

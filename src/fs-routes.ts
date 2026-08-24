@@ -13,26 +13,19 @@ import {
   ensureRealPathInside,
   resolveWorkspaceRoot,
 } from './path-guard.ts'
-import { envelopeFail, envelopeOk } from '../shared/protocol-envelope.ts'
-import type { WorkbenchRouteEnvelope } from '../shared/protocol-envelope.ts'
+import { envelopeFail, envelopeOk } from './shared/protocol-envelope.ts'
+import type { WorkbenchRouteEnvelope } from './shared/protocol-envelope.ts'
 import type {
-  FsDeleteRequest,
   FsDeleteResult,
   FsEntry,
-  FsMkdirRequest,
   FsMkdirResult,
-  FsReadRequest,
   FsReadResult,
-  FsRenameRequest,
   FsRenameResult,
-  FsSearchRequest,
   FsSearchMatch,
   FsSearchResult,
-  FsTreeRequest,
   FsTreeResult,
-  FsWriteRequest,
   FsWriteResult,
-} from '../shared/fs-protocol.ts'
+} from './shared/fs-protocol.ts'
 
 export interface FsRouteConfig {
   readLimitBytes: number
@@ -98,7 +91,13 @@ function extOf(path: string): string {
   return dot > nameStart ? path.slice(dot + 1).toLowerCase() : ''
 }
 
-async function guardPath(config: FsRouteConfig, rootCache: RootCache, cwd: unknown, pathValue: unknown, field: string): Promise<{ cwdReal: string; target: string } | WorkbenchRouteEnvelope<never>> {
+async function guardPath(
+  config: FsRouteConfig,
+  rootCache: RootCache,
+  cwd: unknown,
+  pathValue: unknown,
+  field: string,
+): Promise<{ cwdReal: string; target: string } | WorkbenchRouteEnvelope<never>> {
   const cwdCheck = requireString(cwd, 'cwd')
   if (typeof cwdCheck !== 'string') return cwdCheck
   const pathCheck = requireString(pathValue, field)
@@ -114,7 +113,7 @@ async function guardPath(config: FsRouteConfig, rootCache: RootCache, cwd: unkno
 }
 
 async function readHead(path: string, bytes: number): Promise<Buffer> {
-  const handle = await import('node:fs/promises').then((fs) => fs.open(path, 'r'))
+  const handle = await import('node:fs/promises').then(fs => fs.open(path, 'r'))
   try {
     const buffer = Buffer.alloc(bytes)
     const read = await handle.read(buffer, 0, bytes, 0)
@@ -261,7 +260,7 @@ export function createFsHandlers(rootCache: RootCache, config: FsRouteConfig): M
       const result: FsRenameResult = { moved: true }
       return envelopeOk(result)
     } catch (cause) {
-      const code = (cause as NodeJS.ErrnoException)?.code === 'EXDEV' ? 'cross-device' : 'io-error'
+      const code = (cause as NodeJS.ErrnoException).code === 'EXDEV' ? 'cross-device' : 'io-error'
       return envelopeFail(code, cause instanceof Error ? cause.message : String(cause))
     }
   })

@@ -9,7 +9,7 @@
  */
 import { watch } from 'node:fs'
 import { join } from 'node:path'
-import type { FsChangeEvent, FsEventsFrame } from '../shared/fs-protocol.ts'
+import type { FsChangeEvent, FsEventsFrame } from './shared/fs-protocol.ts'
 
 export interface WatchHandle {
   close(): void
@@ -40,8 +40,8 @@ interface RootEntry {
   degraded: boolean
   refcount: number
   pending: Map<string, FsChangeEvent>
-  debounceTimer?: ReturnType<typeof setTimeout>
-  idleTimer?: ReturnType<typeof setTimeout>
+  debounceTimer?: ReturnType<typeof setTimeout> | undefined
+  idleTimer?: ReturnType<typeof setTimeout> | undefined
   emitBatch: () => void
 }
 
@@ -135,7 +135,7 @@ export class FsWatcherManager {
       degraded: false,
       refcount: 0,
       pending: new Map(),
-      emitBatch: () => this.emitBatch(entry, root),
+      emitBatch: () =>{  this.emitBatch(entry, root) },
     }
     try {
       entry.handle = this.factory(root, (kind, filename) => {

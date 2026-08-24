@@ -50,7 +50,7 @@ export interface TerminalEvents {
 interface TerminalRecord {
   process: PtyProcess | null
   buffer: Buffer
-  graceTimer?: ReturnType<typeof setTimeout>
+  graceTimer?: ReturnType<typeof setTimeout> | undefined
   attached: boolean
   events?: TerminalEvents
 }
@@ -89,11 +89,11 @@ function defaultSpawner(request: PtySpawnRequest): PtyProcess {
         name: 'xterm-256color',
         cols: request.cols,
         rows: request.rows,
-        cwd: request.cwd,
-        env: process.env as Record<string, string>,
+        ...(request.cwd === undefined ? {} : { cwd: request.cwd }),
+        env: process.env,
       })
-      term.onData((data) => request.onData(Buffer.from(data, 'utf8')))
-      term.onExit(({ exitCode }) => request.onExit(exitCode))
+      term.onData((data) =>{  request.onData(Buffer.from(data, 'utf8')) })
+      term.onExit(({ exitCode }) =>{  request.onExit(exitCode) })
     })
     .catch(() => {
       // Surfaced synchronously by ensureNodePtyAvailable(); nothing to do here.
@@ -112,9 +112,9 @@ function defaultSpawner(request: PtySpawnRequest): PtyProcess {
   const bound = term
   return {
     pid: bound.pid,
-    write: (data) => bound.write(data),
-    resize: (cols, rows) => bound.resize(cols, rows),
-    kill: () => bound.kill(),
+    write: (data) =>{  bound.write(data) },
+    resize: (cols, rows) =>{  bound.resize(cols, rows) },
+    kill: () =>{  bound.kill() },
   }
 }
 
@@ -141,7 +141,7 @@ export class PtyRegistry {
   private readonly graceMs: number
 
   constructor(
-    private readonly dependencies: {
+    dependencies: {
       terminalsPerSession?: number
       replayBufferBytes?: number
       reconnectGraceMs?: number
@@ -205,7 +205,7 @@ export class PtyRegistry {
       spawned = this.spawnerFn({
         file: resolution.file,
         args: resolution.args,
-        cwd: options?.cwd,
+        ...(options?.cwd === undefined ? {} : { cwd: options.cwd }),
         cols: options?.cols ?? 80,
         rows: options?.rows ?? 24,
         onData: (chunk) => {

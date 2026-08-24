@@ -29,8 +29,8 @@ export interface PanelDescriptor {
 /** Props the shell hands to every rendered panel component. */
 export interface PanelComponentProps {
   visible: boolean
-  openPanel(panelId: string): void
-  close(): void
+  openPanel: (panelId: string) => void
+  close: () => void
 }
 
 export interface RegisteredPanel extends PanelDescriptor {
@@ -43,7 +43,7 @@ export interface CommandDescriptor {
   id: string
   /** Palette display title. */
   title: string
-  run(): void
+  run: () => void
 }
 
 /** The registry face other modules receive via injection. */
@@ -138,7 +138,7 @@ export function createWorkbenchRegistry(version: string): WorkbenchRegistryApi {
         panelsCache = panels
           .list()
           .sort((a, b) => a.value.order - b.value.order || a.seq - b.seq)
-          .map((entry) => entry.value)
+          .map(entry => entry.value)
         panelsDirty = false
       }
       return panelsCache
@@ -153,7 +153,7 @@ export function createWorkbenchRegistry(version: string): WorkbenchRegistryApi {
     },
     getCommands() {
       if (commandsDirty) {
-        commandsCache = commands.list().map((entry) => entry.value)
+        commandsCache = commands.list().map(entry => entry.value)
         commandsDirty = false
       }
       return commandsCache

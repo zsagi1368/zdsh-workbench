@@ -48,7 +48,7 @@ export function judgeUrl(input: string): UrlGuardVerdict {
     return { allowed: false, code: 'scheme-refused', message: `不允许的协议 ${parsed.protocol}` }
   }
   const hostname = parsed.hostname.toLowerCase()
-  if (hostname === '' || PRIVATE_HOST_PATTERNS.some((pattern) => pattern.test(hostname))) {
+  if (hostname === '' || PRIVATE_HOST_PATTERNS.some(pattern => pattern.test(hostname))) {
     return { allowed: false, code: 'host-refused', message: '内网与本机地址不可通过沙箱面板访问' }
   }
   if (parsed.username !== '' || parsed.password !== '') {

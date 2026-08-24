@@ -37,7 +37,7 @@ export function GitPanel(props: { api: ApiClient; root: string }): React.ReactNo
       return null
     }
     try {
-      const result = await api.call<{ cwd: string }, StatusResult>('git.status', { cwd: root })
+      const result = await api.call<StatusResult>('git.status', { cwd: root })
       setStatus(result)
       setError(null)
       return result
@@ -60,7 +60,7 @@ export function GitPanel(props: { api: ApiClient; root: string }): React.ReactNo
     const chosenCached = entry.x !== ' ' && entry.y === ' ' ? true : cached
     void target
     try {
-      const value = await api.call<{ cwd: string; path?: string }, string>(
+      const value = await api.call<string>(
         chosenCached ? 'git.diffCached' : 'git.diff',
         { cwd: root, path: abs(entry.path) },
       )
@@ -116,7 +116,7 @@ export function GitPanel(props: { api: ApiClient; root: string }): React.ReactNo
 
   async function loadHistory(_branch?: string): Promise<void> {
     try {
-      const commits = await api.call<{ cwd: string; limit: number }, Array<{ hash: string; author: string; subject: string }>>('git.log', { cwd: root, limit: 30 })
+      const commits = await api.call<Array<{ hash: string; author: string; subject: string }>>('git.log', { cwd: root, limit: 30 })
       setHistory(commits)
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause))
@@ -125,12 +125,12 @@ export function GitPanel(props: { api: ApiClient; root: string }): React.ReactNo
 
   async function network(action: 'fetch' | 'pull' | 'push'): Promise<void> {
     try {
-      const preview = await api.call<{ cwd: string }, { requiresConfirmation: boolean; tracking: string; remotes: string }>('git.' + action, { cwd: root })
+      const preview = await api.call<{ requiresConfirmation: boolean; tracking: string; remotes: string }>('git.' + action, { cwd: root })
       if (!preview.requiresConfirmation) return
       const detail = `${action} → ${preview.tracking || '(无上游)'}\n\n${preview.remotes}`
       if (window.confirm(`确认执行？\n${detail}`)) {
         setBusy(true)
-        const done = await api.call<{ cwd: string; remote: string; confirm: boolean }, { output: string }>('git.' + action, { cwd: root, remote: 'origin', confirm: true })
+        const done = await api.call<{ output: string }>('git.' + action, { cwd: root, remote: 'origin', confirm: true })
         setNetlog(done.output.slice(0, 2000))
         await refresh()
       }
@@ -141,8 +141,8 @@ export function GitPanel(props: { api: ApiClient; root: string }): React.ReactNo
     }
   }
 
-  const unstaged = status?.entries.filter((entry) => !entry.untracked && (entry.y !== ' ' || entry.untracked)) ?? []
-  const changes = status?.entries.filter((entry) => entry.x === ' ' || entry.untracked || (entry.y !== ' ')) ?? []
+  const unstaged = status?.entries.filter(entry => !entry.untracked && (entry.y !== ' ' || entry.untracked)) ?? []
+  const changes = status?.entries.filter(entry => entry.x === ' ' || entry.untracked || (entry.y !== ' ')) ?? []
   void unstaged
 
   return (
@@ -167,7 +167,7 @@ export function GitPanel(props: { api: ApiClient; root: string }): React.ReactNo
       <textarea
         placeholder="提交说明…（Ctrl/Cmd+Enter 提交）"
         value={message}
-        onChange={(event) => setMessage(event.target.value)}
+        onChange={(event) =>{  setMessage(event.target.value) }}
         onKeyDown={(event) => {
           if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') void commit()
         }}
@@ -177,7 +177,7 @@ export function GitPanel(props: { api: ApiClient; root: string }): React.ReactNo
         <button className="zdsh-wb-tab" disabled={busy || message.trim() === ''} onClick={() => void commit()}>✓ 提交</button>
       </div>
 
-      {changes.map((entry) => (
+      {changes.map(entry => (
         <div key={entry.path} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '2px 4px' }}>
           <button
             className="zdsh-wb-menuitem"
@@ -213,10 +213,16 @@ export function GitPanel(props: { api: ApiClient; root: string }): React.ReactNo
       ) : null}
 
       <div style={{ marginTop: 8 }}>
-        <button className="zdsh-wb-menuitem" onClick={() => void (history === null ? loadHistory(status?.branch) : setHistory(null))}>
+        <button
+          className="zdsh-wb-menuitem"
+          onClick={() => {
+            if (history === null) void loadHistory(status?.branch)
+            else setHistory(null)
+          }}
+        >
           {history === null ? '历史 ▸' : '历史 ▾'}
         </button>
-        {history?.map((commitItem) => (
+        {history?.map(commitItem => (
           <div key={commitItem.hash} className="zdsh-wb-menuitem" style={{ fontSize: 11, opacity: 0.85 }}>
             <code>{commitItem.hash}</code> {commitItem.subject}
           </div>
