@@ -11,6 +11,7 @@ import { WORKBENCH_ROUTE_PREFIX as PREFIX, pingResult } from '../shared/protocol
 import type { WorkbenchRouteEnvelope } from '../shared/protocol-envelope.ts'
 import type { WebRoute } from './context-types.ts'
 import './context-types.ts'
+import { createGitHandlers } from './git-routes.ts'
 import { createFsHandlers, readBody, RootCache } from './fs-routes.ts'
 import { FsWatcherManager } from './fs-watch.ts'
 import { PtyRegistry } from './pty-registry.ts'
@@ -72,15 +73,16 @@ export function apply(ctx: Context, options?: WorkbenchHostConfig): void {
     terminalsPerSession: options?.terminalsPerSession,
     reconnectGraceMs: options?.reconnectGraceMs,
   })
-  const handlers = createFsHandlers(new RootCache(), {
+  const rootCache = new RootCache()
+  const handlers = createFsHandlers(rootCache, {
     readLimitBytes,
     listLimit: options?.listLimit ?? DEFAULTS.listLimit,
     searchLimit: options?.searchLimit ?? DEFAULTS.searchLimit,
   })
-
+  const gitHandlers = createGitHandlers({ rootCache })
   const dispatch = async (method: string, payload: unknown): Promise<WorkbenchRouteEnvelope<unknown>> => {
     if (method === 'ping') return envelopeValue(pingResult())
-    const handler = handlers.get(method)
+    const handler = handlers.get(method) ?? gitHandlers.get(method)
     if (handler === undefined) return fail('no-route', `unknown workbench method ${method}`)
     return handler(payload)
   }

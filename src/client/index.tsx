@@ -12,6 +12,7 @@ import { setCollapsed, togglePalette } from './shell/events.ts'
 import { mountDock } from './shell/mount.tsx'
 import { loadPrefs, savePrefs } from './shell/prefs.ts'
 import { registerFilesFeature } from './panels/files/register-files.tsx'
+import { registerGitFeature } from './panels/git/register-git.tsx'
 import { registerTerminalFeature } from './panels/terminal/register-terminal.tsx'
 
 export { createWorkbenchRegistry } from './registry.ts'
@@ -45,6 +46,7 @@ export function apply(ctx: Context): void {
     typeof window !== 'undefined' ? window.localStorage : undefined,
   )
   const disposeTerminal = registerTerminalFeature(registry)
+  const disposeGit = registerGitFeature(registry)
 
   if (typeof document === 'undefined') {
     // Node/test or non-DOM surface: the service contract still loads.
@@ -63,6 +65,7 @@ export function apply(ctx: Context): void {
   dock.applyPrefs(loadPrefs(window.localStorage))
   ctx.effect(() => () => {
     dock.dispose()
+    disposeGit()
     disposeTerminal()
     disposeFiles()
     disposeCommands()
