@@ -96,14 +96,19 @@ describe('workbench layout store', () => {
     expect(revived.every((tab) => !tab.orphan)).toBe(true)
   })
 
-  it('resolves the active tab to a live entry, else the first live tab', () => {
+  it('keeps an orphan active tab focused so the placeholder is visible', () => {
     const tabs = [
       { id: 'gone:x', orphan: true },
       { id: 'live:a', orphan: false },
     ]
-    expect(resolveActive(tabs, 'gone:x')).toBe('live:a')
+    // The stored active id survives even as an orphan: the placeholder for
+    // the tab you were reading IS the recovery surface.
+    expect(resolveActive(tabs, 'gone:x')).toBe('gone:x')
     expect(resolveActive(tabs, 'live:a')).toBe('live:a')
-    expect(resolveActive([{ id: 'gone:x', orphan: true }], 'gone:x')).toBeNull()
+    expect(resolveActive(tabs, 'missing:id')).toBe('live:a')
+    // All-orphan list without a stored active still lands somewhere visible.
+    expect(resolveActive([{ id: 'gone:y', orphan: true }], null)).toBe('gone:y')
+    expect(resolveActive([], null)).toBeNull()
   })
 
   it('notifies subscribers on every committed change', () => {

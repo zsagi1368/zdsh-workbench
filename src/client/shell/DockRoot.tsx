@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'reac
 import type { RegisteredPanel, WorkbenchRegistryApi } from '../registry.ts'
 import { PALETTE_TOGGLE_EVENT, SET_COLLAPSED_EVENT } from './events.ts'
 import type { LayoutStore } from './layout-store.ts'
+import type { WorkbenchPrefs } from './prefs.ts'
+import { SettingsPanel } from './SettingsPanel.tsx'
 
 /**
  * Dock shell: right-edge panel with a tab bar, `+` menu, body area, and the
@@ -140,8 +142,13 @@ function CommandPalette(props: {
   )
 }
 
-export function DockRoot(props: { registry: WorkbenchRegistryApi; store: LayoutStore }): React.ReactNode {
-  const { registry, store } = props
+export function DockRoot(props: {
+  registry: WorkbenchRegistryApi
+  store: LayoutStore
+  prefs: WorkbenchPrefs
+  onPrefsChange?: (prefs: WorkbenchPrefs) => void
+}): React.ReactNode {
+  const { registry, store, prefs, onPrefsChange } = props
   const layout = useLayout(store)
   const panels = useRegistryValue(registry, () => registry.getPanels())
   const commands = useRegistryValue(registry, () => registry.getCommands())
@@ -154,6 +161,7 @@ export function DockRoot(props: { registry: WorkbenchRegistryApi; store: LayoutS
 
   const [plusOpen, setPlusOpen] = useState(false)
   const [paletteOpen, setPaletteOpen] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
 
   useEffect(() => {
     const toggle = (): void => setPaletteOpen((open) => !open)
@@ -223,8 +231,19 @@ export function DockRoot(props: { registry: WorkbenchRegistryApi; store: LayoutS
         <span className="zdsh-wb-spacer" />
         <button className="zdsh-wb-iconbtn" title="打开面板（+）" onClick={() => setPlusOpen((open) => !open)}>＋</button>
         <button className="zdsh-wb-iconbtn" title="命令面板（Ctrl/Cmd+Shift+P）" onClick={() => setPaletteOpen(true)}>⌘</button>
+        {onPrefsChange !== undefined ? (
+          <button className="zdsh-wb-iconbtn" title="工作台设置" onClick={() => setSettingsOpen((open) => !open)}>⚙</button>
+        ) : null}
         <button className="zdsh-wb-iconbtn" title="折叠工作台" onClick={() => store.setCollapsed(true)}>▶</button>
       </div>
+
+      {settingsOpen && onPrefsChange !== undefined ? (
+        <SettingsPanel
+          prefs={prefs}
+          onChange={onPrefsChange}
+          onClose={() => setSettingsOpen(false)}
+        />
+      ) : null}
 
       {plusOpen ? (
         <PlusMenu

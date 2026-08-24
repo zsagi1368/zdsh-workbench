@@ -10,6 +10,7 @@ import type { WorkbenchRegistryApi } from './registry.ts'
 import { createWorkbenchRegistry } from './registry.ts'
 import { setCollapsed, togglePalette } from './shell/events.ts'
 import { mountDock } from './shell/mount.tsx'
+import { loadPrefs, savePrefs } from './shell/prefs.ts'
 
 export { createWorkbenchRegistry } from './registry.ts'
 export type { CommandDescriptor, PanelDescriptor, RegisteredPanel, WorkbenchRegistryApi } from './registry.ts'
@@ -44,7 +45,15 @@ export function apply(ctx: Context): void {
     return
   }
 
-  const dock = mountDock(registry)
+  const dock = mountDock(registry, {
+    onPrefsChange(next) {
+      savePrefs(window.localStorage, next)
+      dock.applyPrefs(next)
+    },
+  })
+  // Re-apply stored prefs on boot so a disabled hotkey stays disabled even
+  // though mountDock's initial attach already read the same store.
+  dock.applyPrefs(loadPrefs(window.localStorage))
   ctx.effect(() => () => {
     dock.dispose()
     disposeCommands()

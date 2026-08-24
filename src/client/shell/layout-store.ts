@@ -59,6 +59,15 @@ function clampWidth(widthPercent: number): number {
   return Math.min(WIDTH_MAX, Math.max(WIDTH_MIN, widthPercent))
 }
 
+/** Order- and content-sensitive equality for tab lists. */
+function sameTabs(a: readonly LayoutTab[], b: readonly LayoutTab[]): boolean {
+  if (a.length !== b.length) return false
+  return a.every((tab, index) => {
+    const other = b[index]
+    return other !== undefined && tab.id === other.id && tab.orphan === other.orphan
+  })
+}
+
 /**
  * Reconcile stored tabs against the live registration snapshot:
  * known ids stay live entries, unknown ids survive as orphans, and an
@@ -70,14 +79,15 @@ export function reconcileTabs(stored: LayoutTab[], panels: readonly RegisteredPa
 }
 
 /**
- * Pick the active tab after reconciliation: prefer the stored active id when
- * it is still live; otherwise the first live tab; otherwise null (which the
- * shell renders as the empty state).
+ * Pick the active tab after reconciliation: keep the stored active id while
+ * its tab still exists — even as an orphan, because "provider not loaded"
+ * is exactly what the placeholder must show for the tab you were reading.
+ * Otherwise prefer the first live tab, then any remaining tab, else null.
  */
 export function resolveActive(tabs: readonly LayoutTab[], storedActiveId: string | null): string | null {
-  if (storedActiveId !== null && tabs.some((tab) => tab.id === storedActiveId && !tab.orphan)) return storedActiveId
+  if (storedActiveId !== null && tabs.some((tab) => tab.id === storedActiveId)) return storedActiveId
   const firstLive = tabs.find((tab) => !tab.orphan)
-  return firstLive?.id ?? null
+  return firstLive?.id ?? tabs[0]?.id ?? null
 }
 
 /** Storage-backed store. `storage` is injectable so tests run without localStorage. */
@@ -142,7 +152,12 @@ export class LayoutStore {
     const current = this.state
     const tabs = reconcileTabs(current.tabs, panels)
     const activeId = resolveActive(tabs, current.activeId)
-    if (tabs.length === 0 && current.tabs.length === 0) return
+    // Commit only on real change: this runs on every registration announce,
+    // and an unconditional commit would notify right back into itself.
+    if (
+      tabs.length === 0 && current.tabs.length === 0 && activeId === current.activeId
+    ) return
+    if (sameTabs(tabs, current.tabs) && activeId === current.activeId) return
     this.commit({ ...current, tabs, activeId })
   }
 

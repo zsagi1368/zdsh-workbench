@@ -93,8 +93,22 @@ export function createWorkbenchRegistry(version: string): WorkbenchRegistryApi {
   const commands = createIdMapStore<CommandDescriptor>('command')
   const listeners = new Set<() => void>()
 
+  // Snapshot caches: useSyncExternalStore requires getSnapshot to return a
+  // reference-stable value between changes, so derived arrays are rebuilt
+  // only after a mutation marks them dirty.
+  let panelsDirty = true
+  let panelsCache: readonly RegisteredPanel[] = []
+  let commandsDirty = true
+  let commandsCache: readonly CommandDescriptor[] = []
+
   const announce = (): void => {
     for (const listener of listeners) listener()
+  }
+
+  const markChanged = (): void => {
+    panelsDirty = true
+    commandsDirty = true
+    announce()
   }
 
   return {
@@ -103,30 +117,38 @@ export function createWorkbenchRegistry(version: string): WorkbenchRegistryApi {
     registerPanel(descriptor) {
       const registered: RegisteredPanel = { ...descriptor, order: descriptor.order ?? 100 }
       panels.add(registered.id, registered)
-      announce()
+      markChanged()
       return () => {
         // Disposing an already-disposed registration stays a no-op so
         // double teardown (manual + fiber) never throws.
         if (!panels.remove(registered.id)) return
-        announce()
+        markChanged()
       }
     },
     getPanels() {
-      return panels
-        .list()
-        .sort((a, b) => a.value.order - b.value.order || a.seq - b.seq)
-        .map((entry) => entry.value)
+      if (panelsDirty) {
+        panelsCache = panels
+          .list()
+          .sort((a, b) => a.value.order - b.value.order || a.seq - b.seq)
+          .map((entry) => entry.value)
+        panelsDirty = false
+      }
+      return panelsCache
     },
     registerCommand(descriptor) {
       commands.add(descriptor.id, { ...descriptor })
-      announce()
+      markChanged()
       return () => {
         if (!commands.remove(descriptor.id)) return
-        announce()
+        markChanged()
       }
     },
     getCommands() {
-      return commands.list().map((entry) => entry.value)
+      if (commandsDirty) {
+        commandsCache = commands.list().map((entry) => entry.value)
+        commandsDirty = false
+      }
+      return commandsCache
     },
     subscribe(listener) {
       listeners.add(listener)

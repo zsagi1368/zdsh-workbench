@@ -8,10 +8,13 @@ import type { WorkbenchRegistryApi } from '../registry.ts'
 import { DockRoot } from './DockRoot.tsx'
 import { PALETTE_TOGGLE_EVENT } from './events.ts'
 import { LayoutStore } from './layout-store.ts'
+import { loadPrefs } from './prefs.ts'
 import { DOCK_CONTAINER_ID, WORKBENCH_STYLE_ID, WORKBENCH_STYLES } from './styles.ts'
 
 export interface MountedDock {
   store: LayoutStore
+  /** Re-apply preference-driven behavior (currently the palette hotkey). */
+  applyPrefs(prefs: import('./prefs.ts').WorkbenchPrefs): void
   dispose(): void
 }
 
@@ -30,8 +33,12 @@ function attachPaletteHotkey(): () => void {
   }
 }
 
-export function mountDock(registry: WorkbenchRegistryApi): MountedDock {
+export function mountDock(
+  registry: WorkbenchRegistryApi,
+  options: { onPrefsChange?: (prefs: import('./prefs.ts').WorkbenchPrefs) => void } = {},
+): MountedDock {
   const disposers: Array<() => void> = []
+  const prefs = loadPrefs(window.localStorage)
 
   let style = document.getElementById(WORKBENCH_STYLE_ID)
   if (style === null) {
@@ -47,14 +54,31 @@ export function mountDock(registry: WorkbenchRegistryApi): MountedDock {
   document.body.appendChild(container)
   disposers.push(() => container.remove())
 
-  disposers.push(attachPaletteHotkey())
+  let activeHotkeyDisposer = prefs.paletteHotkey ? attachPaletteHotkey() : undefined
+  if (activeHotkeyDisposer !== undefined) disposers.push(activeHotkeyDisposer)
 
   const store = new LayoutStore('global', window.localStorage)
+  // Honor start-collapsed only when the user has no explicit collapse state
+  // stored, so a manual expand survives reloads regardless of the pref.
+  const storedLayout = store.getState().revision === 0 ? undefined : store.getState()
+  if (prefs.startCollapsed && storedLayout === undefined) store.setCollapsed(true)
+
   const root = createRoot(container)
-  root.render(<DockRoot registry={registry} store={store} />)
+  root.render(<DockRoot registry={registry} store={store} prefs={prefs} onPrefsChange={options.onPrefsChange} />)
 
   return {
     store,
+    applyPrefs(next) {
+      const wantsHotkey = next.paletteHotkey
+      if (wantsHotkey && activeHotkeyDisposer === undefined) {
+        activeHotkeyDisposer = attachPaletteHotkey()
+      } else if (!wantsHotkey && activeHotkeyDisposer !== undefined) {
+        const index = disposers.indexOf(activeHotkeyDisposer)
+        if (index !== -1) disposers.splice(index, 1)
+        activeHotkeyDisposer()
+        activeHotkeyDisposer = undefined
+      }
+    },
     dispose() {
       // React unmount must precede container removal so effects tear down.
       root.unmount()
