@@ -13,6 +13,8 @@ import type { WebRoute } from './context-types.ts'
 import './context-types.ts'
 import { createFsHandlers, readBody, RootCache } from './fs-routes.ts'
 import { FsWatcherManager } from './fs-watch.ts'
+import { PtyRegistry } from './pty-registry.ts'
+import { acceptTerminalSocket } from './terminal-route.ts'
 import { assertTrustedAuthorityEntry, isTrustedRequestHost } from './trust.ts'
 
 /** Services required from the host composition. */
@@ -36,6 +38,10 @@ export interface WorkbenchHostConfig {
   searchLimit?: number
   /** Watcher batch window in milliseconds. */
   watchDebounceMs?: number
+  /** Terminals one session may hold open at once. */
+  terminalsPerSession?: number
+  /** How long a disconnected terminal survives awaiting a reconnect (ms). */
+  reconnectGraceMs?: number
 }
 
 const DEFAULTS = {
@@ -62,6 +68,10 @@ export function apply(ctx: Context, options?: WorkbenchHostConfig): void {
   const readLimitBytes = options?.readLimitBytes ?? DEFAULTS.readLimitBytes
   const bodyCap = options?.writeBodyLimitBytes ?? DEFAULTS.writeBodyLimitBytes
   const watchers = new FsWatcherManager({ debounceMs: options?.watchDebounceMs ?? DEFAULTS.watchDebounceMs })
+  const ptyRegistry = new PtyRegistry({
+    terminalsPerSession: options?.terminalsPerSession,
+    reconnectGraceMs: options?.reconnectGraceMs,
+  })
   const handlers = createFsHandlers(new RootCache(), {
     readLimitBytes,
     listLimit: options?.listLimit ?? DEFAULTS.listLimit,
@@ -166,4 +176,14 @@ export function apply(ctx: Context, options?: WorkbenchHostConfig): void {
 
   ctx.effect(() => ctx.webServer.register(apiRoute), 'workbench: /workbench/api routes')
   ctx.effect(() => ctx.webServer.register(eventsRoute), 'workbench: /workbench/events sse')
+  ctx.effect(() => ctx.webServer.registerUpgrade({
+    path: `${PREFIX}/ws/terminal`,
+    handler: (req, socket, head) => {
+      if (!isTrustedRequestHost(req.headers, trustedHosts)) {
+        socket.destroy()
+        return
+      }
+      acceptTerminalSocket(ptyRegistry, req, socket, head)
+    },
+  }), 'workbench: terminal ws upgrade')
 }

@@ -27,6 +27,9 @@ export default defineConfig([
     outExtensions: () => ({ js: '.js' }),
     clean: false,
     external: sharedExternal,
+    // Browser imports cannot resolve bare specifiers from node_modules;
+    // everything the host page does not provide must be INLINED.
+    noExternal: [/^@xterm\//],
     dts: false,
   },
 ])
