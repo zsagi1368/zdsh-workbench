@@ -1,0 +1,12 @@
+# zdsh-workbench bundle patch
+#
+# Installed through the official channel:
+#   dsh plugin --profile <name> add zdsh-workbench@<version>
+# The command appends this bundle to the profile stack; the row below is the
+# single mount line. When another enabled entry already mounts this package
+# under a different id (aggregate bundles), this row backs off via the !!js
+# guard so only one Node half exists.
+- insert:
+    - id: workbench
+      name: 'zdsh-workbench'
+      disabled: !!js "[...ctx.loader.entries()].some((e) => e.options.name === 'zdsh-workbench' && e.options.id !== 'workbench' && !e.disabled)"

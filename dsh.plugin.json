@@ -1,0 +1,16 @@
+{
+  "id": "zdsh/workbench",
+  "version": "0.1.0-alpha.0",
+  "main": "./lib/index.js",
+  "description": "zDSH 工作台：IDE 级停靠工作区（文件/编辑器/终端/Git/任务/浏览/侧聊）+ 面板注册表服务，供其他插件扩展页面与文件预览器",
+  "engines": {
+    "dsh": ">=0.0.1"
+  },
+  "contributes": {
+    "tools": [],
+    "skills": []
+  },
+  "client": {
+    "main": "./lib/client.js"
+  }
+}
