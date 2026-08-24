@@ -6,6 +6,7 @@
 import { useSyncExternalStore } from 'react'
 import type { WorkbenchRegistryApi } from '../../registry.ts'
 import { createApiClient } from '../../api.ts'
+import { getWorkspaceRoot, setWorkspaceRoot } from '../../shell/workspace-root.ts'
 import { Explorer } from './Explorer.tsx'
 import { ExplorerModel } from './explorer-model.ts'
 import { FileView } from './FileView.tsx'
@@ -40,9 +41,11 @@ export function registerFilesFeature(registry: WorkbenchRegistryApi, storage: St
 
   // Restore the last workspace root so reopening the dock lands where the
   // user left off; storage failures degrade to a blank root.
+  // Restore the last workspace root so reopening the dock lands where the
+  // user left off; storage failures degrade to a blank root.
   try {
-    const lastRoot = storage?.getItem('zdsh.workbench.explorer.root')
-    if (typeof lastRoot === 'string' && lastRoot !== '') {
+    const lastRoot = getWorkspaceRoot()
+    if (lastRoot !== '') {
       void model.openRoot(lastRoot)
     }
   } catch {
@@ -73,11 +76,7 @@ export function registerFilesFeature(registry: WorkbenchRegistryApi, storage: St
 
   // Persist root changes for next boot.
   model.subscribe(() => {
-    try {
-      storage?.setItem('zdsh.workbench.explorer.root', model.root)
-    } catch {
-      // In-memory only.
-    }
+    setWorkspaceRoot(model.root)
   })
 
   return () => {

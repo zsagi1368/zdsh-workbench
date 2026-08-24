@@ -38,6 +38,8 @@ export interface FsRouteConfig {
   readLimitBytes: number
   listLimit: number
   searchLimit: number
+  /** Deployment clamp: when set, a request's resolved cwd must pass. */
+  rootAllowed?: (rootReal: string) => boolean
 }
 
 const READ_LIMIT_MAX = 8 * 1024 * 1024
@@ -96,13 +98,16 @@ function extOf(path: string): string {
   return dot > nameStart ? path.slice(dot + 1).toLowerCase() : ''
 }
 
-async function guardPath(rootCache: RootCache, cwd: unknown, pathValue: unknown, field: string): Promise<{ cwdReal: string; target: string } | WorkbenchRouteEnvelope<never>> {
+async function guardPath(config: FsRouteConfig, rootCache: RootCache, cwd: unknown, pathValue: unknown, field: string): Promise<{ cwdReal: string; target: string } | WorkbenchRouteEnvelope<never>> {
   const cwdCheck = requireString(cwd, 'cwd')
   if (typeof cwdCheck !== 'string') return cwdCheck
   const pathCheck = requireString(pathValue, field)
   if (typeof pathCheck !== 'string') return pathCheck
   const root = await rootCache.rootOf(cwdCheck)
   if (typeof root !== 'string') return envelopeFail('bad-request', 'cwd is not an existing directory')
+  if (config.rootAllowed !== undefined && !config.rootAllowed(root)) {
+    return envelopeFail('outside-workspace', 'cwd is outside the deployment workspace clamp')
+  }
   const verdict = await ensureRealPathInside(root, pathCheck)
   if (!verdict.allowed) return envelopeFail(verdict.code, verdict.message)
   return { cwdReal: root, target: verdict.target }
@@ -135,7 +140,7 @@ export function createFsHandlers(rootCache: RootCache, config: FsRouteConfig): M
 
   handlers.set('fs.tree', async (raw) => {
     const payload = asObject(raw)
-    const guarded = await guardPath(rootCache, payload.cwd, payload.path, 'path')
+    const guarded = await guardPath(config, rootCache, payload.cwd, payload.path, 'path')
     if (!('target' in guarded)) return guarded
     try {
       const dirents = await readdir(guarded.target, { withFileTypes: true })
@@ -173,7 +178,7 @@ export function createFsHandlers(rootCache: RootCache, config: FsRouteConfig): M
 
   handlers.set('fs.read', async (raw) => {
     const payload = asObject(raw)
-    const guarded = await guardPath(rootCache, payload.cwd, payload.path, 'path')
+    const guarded = await guardPath(config, rootCache, payload.cwd, payload.path, 'path')
     if (!('target' in guarded)) return guarded
     const requestedMax = typeof payload.maxBytes === 'number' && Number.isFinite(payload.maxBytes)
       ? Math.max(1, Math.floor(payload.maxBytes))
@@ -204,7 +209,7 @@ export function createFsHandlers(rootCache: RootCache, config: FsRouteConfig): M
 
   handlers.set('fs.write', async (raw) => {
     const payload = asObject(raw)
-    const guarded = await guardPath(rootCache, payload.cwd, payload.path, 'path')
+    const guarded = await guardPath(config, rootCache, payload.cwd, payload.path, 'path')
     if (!('target' in guarded)) return guarded
     if (typeof payload.content !== 'string') return envelopeFail('bad-request', 'content must be a string')
     try {
@@ -232,7 +237,7 @@ export function createFsHandlers(rootCache: RootCache, config: FsRouteConfig): M
 
   handlers.set('fs.mkdir', async (raw) => {
     const payload = asObject(raw)
-    const guarded = await guardPath(rootCache, payload.cwd, payload.path, 'path')
+    const guarded = await guardPath(config, rootCache, payload.cwd, payload.path, 'path')
     if (!('target' in guarded)) return guarded
     try {
       await mkdir(guarded.target, { recursive: payload.recursive !== false })
@@ -245,9 +250,9 @@ export function createFsHandlers(rootCache: RootCache, config: FsRouteConfig): M
 
   handlers.set('fs.rename', async (raw) => {
     const payload = asObject(raw)
-    const fromGuarded = await guardPath(rootCache, payload.cwd, payload.from, 'from')
+    const fromGuarded = await guardPath(config, rootCache, payload.cwd, payload.from, 'from')
     if (!('target' in fromGuarded)) return fromGuarded
-    const toGuarded = await guardPath(rootCache, payload.cwd, payload.to, 'to')
+    const toGuarded = await guardPath(config, rootCache, payload.cwd, payload.to, 'to')
     if (!('target' in toGuarded)) return toGuarded
     try {
       const existing = await stat(toGuarded.target).catch(() => undefined)
@@ -263,7 +268,7 @@ export function createFsHandlers(rootCache: RootCache, config: FsRouteConfig): M
 
   handlers.set('fs.delete', async (raw) => {
     const payload = asObject(raw)
-    const guarded = await guardPath(rootCache, payload.cwd, payload.path, 'path')
+    const guarded = await guardPath(config, rootCache, payload.cwd, payload.path, 'path')
     if (!('target' in guarded)) return guarded
     try {
       const stats = await stat(guarded.target)
@@ -286,6 +291,9 @@ export function createFsHandlers(rootCache: RootCache, config: FsRouteConfig): M
     if (query === '') return envelopeFail('bad-request', 'query is required')
     const root = await rootCache.rootOf(cwdCheck)
     if (typeof root !== 'string') return envelopeFail('bad-request', 'cwd is not an existing directory')
+    if (config.rootAllowed !== undefined && !config.rootAllowed(root)) {
+      return envelopeFail('outside-workspace', 'cwd is outside the deployment workspace clamp')
+    }
     const startRaw = typeof payload.root === 'string' && payload.root !== '' ? payload.root : root
     const startVerdict = await ensureRealPathInside(root, startRaw)
     if (!startVerdict.allowed) return envelopeFail(startVerdict.code, startVerdict.message)

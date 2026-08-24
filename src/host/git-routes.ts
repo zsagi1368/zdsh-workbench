@@ -27,6 +27,8 @@ import { ensureRealPathInside } from './path-guard.ts'
 
 export interface GitRouteDeps {
   rootCache: RootCache
+  /** Deployment clamp shared with the fs routes. */
+  rootAllowed?: (rootReal: string) => boolean
 }
 
 type Handler = (payload: unknown) => Promise<WorkbenchRouteEnvelope<unknown>>
@@ -45,10 +47,13 @@ function failResult(result: GitRunResult): WorkbenchRouteEnvelope<never> {
   return fail(result.code === 128 ? 'not-a-repository' : 'git-error', result.stderr)
 }
 
-async function requireRoot(rootCache: RootCache, cwd: unknown): Promise<{ rootReal: string } | WorkbenchRouteEnvelope<never>> {
+async function requireRoot(rootCache: RootCache, cwd: unknown, rootAllowed?: (rootReal: string) => boolean): Promise<{ rootReal: string } | WorkbenchRouteEnvelope<never>> {
   if (typeof cwd !== 'string' || cwd === '') return envelopeFail('bad-request', 'cwd is required')
   const rootReal = await rootCache.rootOf(cwd)
   if (typeof rootReal !== 'string') return envelopeFail('bad-request', 'cwd is not an existing directory')
+  if (rootAllowed !== undefined && !rootAllowed(rootReal)) {
+    return envelopeFail('outside-workspace', 'cwd is outside the deployment workspace clamp')
+  }
   const inside = await ensureRealPathInside(rootReal, cwd)
   if (!inside.allowed) return envelopeFail(inside.code, inside.message)
   return { rootReal }
@@ -63,11 +68,11 @@ async function sanitizeRepoPath(rootReal: string, value: string): Promise<string
   return verdict.allowed ? verdict.target.slice(rootReal.length + 1).replace(/^[\\/]/, '') : null
 }
 
-async function guardAllPaths(rootCache: RootCache, payload: Record<string, unknown>): Promise<{ rootReal: string; repoPaths: string[] } | WorkbenchRouteEnvelope<never>> {
+async function guardAllPaths(rootCache: RootCache, payload: Record<string, unknown>, rootAllowed?: (rootReal: string) => boolean): Promise<{ rootReal: string; repoPaths: string[] } | WorkbenchRouteEnvelope<never>> {
   const raw = payload.paths
   const paths = Array.isArray(raw) ? raw.filter((entry): entry is string => typeof entry === 'string') : []
   if (paths.length === 0) return envelopeFail('bad-request', 'paths array is required')
-  const rootReal0 = await requireRoot(rootCache, payload.cwd)
+  const rootReal0 = await requireRoot(rootCache, payload.cwd, rootAllowed)
   if (!('rootReal' in rootReal0)) return rootReal0
   const repoPaths: string[] = []
   for (const path of paths) {
@@ -81,10 +86,11 @@ async function guardAllPaths(rootCache: RootCache, payload: Record<string, unkno
 export function createGitHandlers(deps: GitRouteDeps): Map<string, Handler> {
   const handlers = new Map<string, Handler>()
   const rootCache = deps.rootCache
+  const rootAllowed = deps.rootAllowed
 
   handlers.set('git.status', async (raw) => {
     const payload = asObject(raw)
-    const root = await requireRoot(rootCache, payload.cwd)
+    const root = await requireRoot(rootCache, payload.cwd, rootAllowed)
     if (!('rootReal' in root)) return root
     const result = await opStatus(root.rootReal)
     if (result.code !== 0) return failResult(result)
@@ -117,7 +123,7 @@ export function createGitHandlers(deps: GitRouteDeps): Map<string, Handler> {
 
   handlers.set('git.diff', async (raw) => {
     const payload = asObject(raw)
-    const root = await requireRoot(rootCache, payload.cwd)
+    const root = await requireRoot(rootCache, payload.cwd, rootAllowed)
     if (!('rootReal' in root)) return root
     const repoPath = typeof payload.path === 'string' && payload.path !== ''
       ? await sanitizeRepoPath(root.rootReal, payload.path)
@@ -130,7 +136,7 @@ export function createGitHandlers(deps: GitRouteDeps): Map<string, Handler> {
 
   handlers.set('git.diffCached', async (raw) => {
     const payload = asObject(raw)
-    const root = await requireRoot(rootCache, payload.cwd)
+    const root = await requireRoot(rootCache, payload.cwd, rootAllowed)
     if (!('rootReal' in root)) return root
     const repoPath = typeof payload.path === 'string' && payload.path !== ''
       ? await sanitizeRepoPath(root.rootReal, payload.path)
@@ -143,7 +149,7 @@ export function createGitHandlers(deps: GitRouteDeps): Map<string, Handler> {
 
   handlers.set('git.log', async (raw) => {
     const payload = asObject(raw)
-    const root = await requireRoot(rootCache, payload.cwd)
+    const root = await requireRoot(rootCache, payload.cwd, rootAllowed)
     if (!('rootReal' in root)) return root
     const limit = typeof payload.limit === 'number' && payload.limit > 0 ? Math.min(Math.floor(payload.limit), 200) : 50
     const result = await opLog(root.rootReal, limit)
@@ -157,7 +163,7 @@ export function createGitHandlers(deps: GitRouteDeps): Map<string, Handler> {
 
   handlers.set('git.branches', async (raw) => {
     const payload = asObject(raw)
-    const root = await requireRoot(rootCache, payload.cwd)
+    const root = await requireRoot(rootCache, payload.cwd, rootAllowed)
     if (!('rootReal' in root)) return root
     const result = await opBranches(root.rootReal)
     if (result.code !== 0) return failResult(result)
@@ -170,7 +176,7 @@ export function createGitHandlers(deps: GitRouteDeps): Map<string, Handler> {
 
   handlers.set('git.stage', async (raw) => {
     const payload = asObject(raw)
-    const guarded = await guardAllPaths(rootCache, payload)
+    const guarded = await guardAllPaths(rootCache, payload, rootAllowed)
     if (!('rootReal' in guarded)) return guarded
     const result = await opStage(guarded.rootReal, guarded.repoPaths)
     if (result.code !== 0) return failResult(result)
@@ -179,7 +185,7 @@ export function createGitHandlers(deps: GitRouteDeps): Map<string, Handler> {
 
   handlers.set('git.unstage', async (raw) => {
     const payload = asObject(raw)
-    const guarded = await guardAllPaths(rootCache, payload)
+    const guarded = await guardAllPaths(rootCache, payload, rootAllowed)
     if (!('rootReal' in guarded)) return guarded
     const result = await opUnstage(guarded.rootReal, guarded.repoPaths)
     if (result.code !== 0) return failResult(result)
@@ -190,7 +196,7 @@ export function createGitHandlers(deps: GitRouteDeps): Map<string, Handler> {
     const payload = asObject(raw)
     const message = typeof payload.message === 'string' ? payload.message.trim() : ''
     if (message === '') return envelopeFail('bad-request', 'commit message is required')
-    const root = await requireRoot(rootCache, payload.cwd)
+    const root = await requireRoot(rootCache, payload.cwd, rootAllowed)
     if (!('rootReal' in root)) return root
     const result = await opCommit(root.rootReal, message)
     if (result.code !== 0) return failResult(result)
@@ -206,7 +212,7 @@ export function createGitHandlers(deps: GitRouteDeps): Map<string, Handler> {
       if (!/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(remoteRaw)) {
         return envelopeFail('bad-request', 'remote name has an unsupported shape')
       }
-      const root = await requireRoot(rootCache, payload.cwd)
+      const root = await requireRoot(rootCache, payload.cwd, rootAllowed)
       if (!('rootReal' in root)) return root
       if (payload.confirm !== true) {
         const remotes = await opRemotes(root.rootReal)

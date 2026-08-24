@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { FsReadResult } from '../../../shared/fs-protocol.ts'
+import { buildMediaUrl, getWorkspaceRoot } from '../../shell/workspace-root.ts'
 import { pickViewKind } from './view-kind.ts'
 
 /**
@@ -23,7 +24,7 @@ export function FileView(props: {
     setState({ status: 'loading' })
     setDraft(null)
     void api
-      .call<{ path: string }, FsReadResult>('fs.read', { path })
+      .call<{ cwd: string; path: string }, FsReadResult>('fs.read', { cwd: getWorkspaceRoot(), path })
       .then((result) => {
         if (alive) setState({ status: 'ready', result })
       })
@@ -39,7 +40,7 @@ export function FileView(props: {
     if (draft === null) return
     setSaving(true)
     try {
-      await api.call<{ path: string; content: string }, unknown>('fs.write', { path, content: draft })
+      await api.call<{ cwd: string; path: string; content: string }, unknown>('fs.write', { cwd: getWorkspaceRoot(), path, content: draft })
       setState({ status: 'ready', result: { kind: 'text', content: draft, truncated: false, size: draft.length } })
       setDraft(null)
     } finally {
@@ -53,13 +54,33 @@ export function FileView(props: {
   const result = state.result
 
   if (result.kind === 'binary') {
-    const isImage = kind === 'image' || kind === 'pdf'
+    const media = buildMediaUrl(path)
+    const name = path.slice(Math.max(path.lastIndexOf('/'), path.lastIndexOf('\\')) + 1)
+    if (kind === 'image') {
+      return (
+        <div>
+          <div style={{ fontWeight: 600, marginBottom: 4 }}>{name} <span style={{ opacity: 0.6, fontSize: 11 }}>({result.size} 字节)</span></div>
+          <img src={media} alt={name} style={{ maxWidth: '100%', borderRadius: 6, border: '1px solid var(--zdsh-wb-border)' }} />
+        </div>
+      )
+    }
+    if (kind === 'pdf') {
+      return (
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+            <span style={{ flex: 1, fontSize: 12, opacity: 0.8 }}>{name}</span>
+            <a className="zdsh-wb-tab" href={buildMediaUrl(path, true)} download={name}>下载</a>
+          </div>
+          <iframe title={name} src={media} style={{ width: '100%', height: '68vh', border: '1px solid var(--zdsh-wb-border)', borderRadius: 6 }} />
+        </div>
+      )
+    }
     return (
       <div>
-        <div style={{ fontWeight: 600, marginBottom: 4 }}>{path}</div>
+        <div style={{ fontWeight: 600, marginBottom: 4 }}>{name}</div>
         <div className="zdsh-wb-orphan">
-          二进制文件（{result.size} 字节{result.truncated ? '，仅头部预读' : ''}）。
-          {isImage ? '图片 / PDF 内嵌预览将在媒体路由接入后可用（M2 收尾）。' : '暂无内嵌渲染器。'}
+          二进制文件（{result.size} 字节），暂无内嵌渲染器。
+          <a className="zdsh-wb-tab" href={media + '&download=1'} download={name}>下载文件</a>
         </div>
       </div>
     )

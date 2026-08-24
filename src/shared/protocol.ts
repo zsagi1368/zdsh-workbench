@@ -16,7 +16,7 @@ export const WORKBENCH_ROUTE_PREFIX = '/workbench'
  * Plugin version. MUST equal package.json "version" and dsh.plugin.json
  * "version"; tests/manifest.spec.ts guards the three-way sync.
  */
-export const WORKBENCH_VERSION = '0.1.0-alpha.0'
+export const WORKBENCH_VERSION = '0.1.0-beta.1'
 
 /** Answer shape of GET/POST `/workbench/api/ping` — the liveness probe used by mount e2e. */
 export interface PingResult {

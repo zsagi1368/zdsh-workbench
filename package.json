@@ -1,6 +1,6 @@
 {
   "name": "zdsh-workbench",
-  "version": "0.1.0-alpha.0",
+  "version": "0.1.0-beta.1",
   "description": "zDSH Workbench: an IDE-grade dock workspace for DSH (deepseek-harness) - files / editor / terminal / git / tasks / browse / side chat, plus a service registry other plugins can extend. Clean-room independent development.",
   "type": "module",
   "license": "MIT",

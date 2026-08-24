@@ -1,11 +1,13 @@
 /**
- * The terminal feature: one panel hosting a persistent terminal keyed to
- * this page session. Reconnect semantics live in TerminalView; this module
- * only registers through the public registry api.
+ * Terminal feature: one panel hosting up to the per-session quota of
+ * terminal tabs. Reconnect semantics live in TerminalView.
  */
 import { useState } from 'react'
 import type { WorkbenchRegistryApi } from '../../registry.ts'
+import { getWorkspaceRoot } from '../../shell/workspace-root.ts'
 import { TerminalView } from './TerminalView.tsx'
+
+const MAX_TERMINALS = 3
 
 export function registerTerminalFeature(registry: WorkbenchRegistryApi): () => void {
   return registry.registerPanel({
@@ -13,21 +15,51 @@ export function registerTerminalFeature(registry: WorkbenchRegistryApi): () => v
     title: '终端',
     order: 40,
     component: function TerminalPanel() {
+      const [terminals, setTerminals] = useState<Array<{ id: number }>>([{ id: 1 }])
+      const [activeId, setActiveId] = useState(1)
       const [nonce, setNonce] = useState(0)
-      // The remount nonce is the "restart" affordance after an exit; the
-      // view's own 重新启动 button flips phase, this one rebuilds from zero.
-      void setNonce
-      const root = readExplorerRoot()
-      return <TerminalView key={nonce} termId={`main-${nonce}`} cwd={root ?? undefined} />
+
+      const addTerminal = (): void => {
+        if (terminals.length >= MAX_TERMINALS) return
+        const id = Math.max(0, ...terminals.map((terminal) => terminal.id)) + 1
+        setTerminals((previous) => [...previous, { id }])
+        setActiveId(id)
+      }
+
+      const closeTerminal = (id: number): void => {
+        setTerminals((previous) => {
+          const next = previous.filter((terminal) => terminal.id !== id)
+          if (next.length === 0) return [{ id: id + 1 }]
+          if (id === activeId) setActiveId(next[next.length - 1]?.id ?? next[0]?.id ?? id + 1)
+          return next
+        })
+        // Remount key bump so closed ids never collide with fresh ones.
+        setNonce((value) => value + 1)
+      }
+
+      const active = terminals.find((terminal) => terminal.id === activeId) ?? terminals[0]
+      const cwd = getWorkspaceRoot()
+
+      return (
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 4 }}>
+            {terminals.map((terminal) => (
+              <span key={terminal.id} style={{ display: 'inline-flex', alignItems: 'center' }}>
+                <button className="zdsh-wb-tab" aria-selected={terminal.id === active?.id} onClick={() => setActiveId(terminal.id)}>
+                  终端 {String(terminal.id)}
+                </button>
+                <button className="zdsh-wb-iconbtn" style={{ fontSize: 9 }} onClick={() => closeTerminal(terminal.id)}>×</button>
+              </span>
+            ))}
+            {terminals.length < MAX_TERMINALS ? (
+              <button className="zdsh-wb-iconbtn" title="新终端" onClick={addTerminal}>＋</button>
+            ) : null}
+          </div>
+          {active !== undefined ? (
+            <TerminalView key={`${active.id}-${nonce}`} termId={`t${active.id}`} cwd={cwd === '' ? undefined : cwd} />
+          ) : null}
+        </div>
+      )
     },
   })
-}
-
-function readExplorerRoot(): string | null {
-  try {
-    const value = window.localStorage.getItem('zdsh.workbench.explorer.root')
-    return typeof value === 'string' && value !== '' ? value : null
-  } catch {
-    return null
-  }
 }

@@ -7,6 +7,7 @@
  */
 import type { Context } from '@deepseek-ai/cordis'
 import type { ServerResponse } from 'node:http'
+import { realpathSync } from 'node:fs'
 import { WORKBENCH_ROUTE_PREFIX as PREFIX, pingResult } from '../shared/protocol.ts'
 import type { WorkbenchRouteEnvelope } from '../shared/protocol-envelope.ts'
 import type { WebRoute } from './context-types.ts'
@@ -14,6 +15,7 @@ import './context-types.ts'
 import { createGitHandlers } from './git-routes.ts'
 import { createFsHandlers, readBody, RootCache } from './fs-routes.ts'
 import { TaskLedger } from './task-ledger.ts'
+import { createMediaHandler } from './media-route.ts'
 import { FsWatcherManager } from './fs-watch.ts'
 import { PtyRegistry } from './pty-registry.ts'
 import { acceptTerminalSocket } from './terminal-route.ts'
@@ -44,6 +46,15 @@ export interface WorkbenchHostConfig {
   terminalsPerSession?: number
   /** How long a disconnected terminal survives awaiting a reconnect (ms). */
   reconnectGraceMs?: number
+  /**
+   * Workspace clamp: when non-empty, every request-declared `cwd` must lie
+   * inside one of these directories (first match wins per request). Empty
+   * means unrestricted — acceptable only because the trust fence limits the
+   * API to the user's own machine and page origin; deployments that expose
+   * the port beyond loopback SHOULD set this. The branch-integration build
+   * derives it from the live session automatically.
+   */
+  allowedRoots?: string[]
 }
 
 const DEFAULTS = {
@@ -75,12 +86,28 @@ export function apply(ctx: Context, options?: WorkbenchHostConfig): void {
     reconnectGraceMs: options?.reconnectGraceMs,
   })
   const rootCache = new RootCache()
+  // Workspace clamp: resolve once at boot so the clamp itself cannot be
+  // influenced by request-time symlink games.
+  const allowedRealRoots: string[] = []
+  for (const candidate of options?.allowedRoots ?? []) {
+    try {
+      allowedRealRoots.push(realpathSync(candidate))
+    } catch {
+      // Unresolvable configured root: refuse loudly at composition time.
+      throw new Error(`workbench: allowedRoots entry is not an existing directory: ${candidate}`)
+    }
+  }
+  const rootAllowed = (rootReal: string): boolean =>
+    allowedRealRoots.length === 0 ||
+    allowedRealRoots.some((allowed) => rootReal === allowed || rootReal.startsWith(allowed + (allowed.includes('\\') ? '\\' : '/')))
+
   const handlers = createFsHandlers(rootCache, {
     readLimitBytes,
     listLimit: options?.listLimit ?? DEFAULTS.listLimit,
     searchLimit: options?.searchLimit ?? DEFAULTS.searchLimit,
+    rootAllowed,
   })
-  const gitHandlers = createGitHandlers({ rootCache })
+  const gitHandlers = createGitHandlers({ rootCache, rootAllowed })
 
   const taskLedger = new TaskLedger()
   const tasksReady = taskLedger.init().catch(() => {})
@@ -178,7 +205,15 @@ export function apply(ctx: Context, options?: WorkbenchHostConfig): void {
           req.destroy()
         }
       })
-      const addDisposer = watchers.addRoots(roots.filter((root): root is string => typeof root === 'string'))
+      const candidateRoots: string[] = []
+      for (const root of roots) {
+        if (typeof root !== 'string' || root === '') continue
+        const real = await rootCache.rootOf(root)
+        if (typeof real !== 'string') continue
+        if (!rootAllowed(real)) continue
+        candidateRoots.push(real)
+      }
+      const addDisposer = watchers.addRoots(candidateRoots)
       const heartbeat = setInterval(() => {
         try {
           res.write(': heartbeat\n\n')
@@ -196,6 +231,11 @@ export function apply(ctx: Context, options?: WorkbenchHostConfig): void {
   }
 
   ctx.effect(() => ctx.webServer.register(apiRoute), 'workbench: /workbench/api routes')
+  ctx.effect(() => ctx.webServer.register({
+    kind: 'exact',
+    path: `${PREFIX}/file`,
+    handler: createMediaHandler(rootCache, trustedHosts, rootAllowed),
+  }), 'workbench: /workbench/file media route')
   ctx.effect(() => ctx.webServer.register(eventsRoute), 'workbench: /workbench/events sse')
   ctx.effect(() => ctx.webServer.registerUpgrade({
     path: `${PREFIX}/ws/terminal`,
