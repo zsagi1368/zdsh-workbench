@@ -10,35 +10,42 @@ async function tempLedgerPath(): Promise<string> {
 }
 
 describe('task ledger', () => {
+  /** Narrow the envelope loudly: fail the test when a success was expected to fail. */
+  function errOf(envelope: { ok: boolean; error?: { code: string } }): string {
+    if (envelope.ok || envelope.error === undefined) throw new Error('expected an envelope failure')
+    return envelope.error.code
+  }
+
   it('creates, updates and deletes with a monotonic revision', async () => {
     const ledger = new TaskLedger({ filePath: await tempLedgerPath() })
     await ledger.init()
-    expect(ledger.getSnapshot().revision).toBe(1) // fresh persist bumps to 1
+    expect(ledger.getSnapshot().revision).toBe(0) // fresh start, no commits yet
 
     const created = await ledger.create({ title: '写规划' })
     expect(created.ok).toBe(true)
-    const id = (created.value?.tasks[0]?.id) ?? ''
-    expect(created.value?.revision).toBe(2)
+    const firstTask = created.ok ? created.value.tasks[0] : undefined
+    const id = firstTask?.id ?? ''
+    expect(created.ok ? created.value.revision : -1).toBe(1) // one committed mutation
 
     const moved = await ledger.update({ id, status: 'doing' })
-    expect(moved.value?.tasks[0]?.status).toBe('doing')
-    expect(moved.value?.revision).toBeGreaterThan(created.value?.revision ?? 0)
+    expect(moved.ok ? moved.value.tasks[0]?.status : '').toBe('doing')
+    expect(moved.ok ? moved.value.revision : -1).toBeGreaterThan(created.ok ? created.value.revision : 0)
 
     const renamed = await ledger.update({ id, title: '写完规划' })
-    expect(renamed.value?.tasks[0]?.title).toBe('写完规划')
+    expect(renamed.ok ? renamed.value.tasks[0]?.title : '').toBe('写完规划')
 
     const removed = await ledger.remove({ id })
-    expect(removed.value?.tasks).toHaveLength(0)
+    expect(removed.ok ? removed.value.tasks.length : -1).toBe(0)
   })
 
   it('rejects empty titles, bad statuses and unknown ids', async () => {
     const ledger = new TaskLedger({ filePath: await tempLedgerPath() })
     await ledger.init()
-    expect((await ledger.create({ title: '   ' })).ok).toBe(false)
-    expect((await ledger.update({ id: 'nope', status: 'doing' })).error?.code).toBe('not-found')
+    expect(errOf(await ledger.create({ title: '   ' }))).toBe('bad-request')
+    expect(errOf(await ledger.update({ id: 'nope', status: 'doing' }))).toBe('not-found')
     const created = await ledger.create({ title: 'x' })
-    const id = created.value?.tasks[0]?.id ?? ''
-    expect((await ledger.update({ id, status: 'archived' })).error?.code).toBe('bad-request')
+    const id = created.ok ? (created.value.tasks[0]?.id ?? '') : ''
+    expect(errOf(await ledger.update({ id, status: 'archived' }))).toBe('bad-request')
   })
 
   it('round-trips through the backing document', async () => {
