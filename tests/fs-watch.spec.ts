@@ -15,7 +15,7 @@ describe('fs watcher manager', () => {
       return { close() {} }
     }
     const manager = new FsWatcherManager({ debounceMs: 10, watchFactory: factory })
-    const frames: Array<{ domain: string; changes: Array<{ path: string }> }> = []
+    const frames: Array<{ domain: string; changes?: Array<{ path: string }> }> = []
     manager.subscribe((frame) => frames.push(frame))
 
     const dispose = manager.addRoots(['C:/ws-a'.replace(/\//g, '\\'), 'C:\\ws-b'].map((root) => root)) // platform-agnostic enough for the map keys below
@@ -27,7 +27,7 @@ describe('fs watcher manager', () => {
     await sleep(40)
     expect(frames).toHaveLength(1)
     expect(frames[0]?.domain).toBe('fs')
-    expect(frames[0]?.changes.map((change) => change.path)).toEqual([
+    expect(frames[0]?.changes?.map((change) => change.path)).toEqual([
       join(rootA, 'x.txt'),
       join(rootA, 'y.txt'),
     ])

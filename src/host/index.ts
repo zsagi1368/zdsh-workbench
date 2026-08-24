@@ -13,6 +13,7 @@ import type { WebRoute } from './context-types.ts'
 import './context-types.ts'
 import { createGitHandlers } from './git-routes.ts'
 import { createFsHandlers, readBody, RootCache } from './fs-routes.ts'
+import { TaskLedger } from './task-ledger.ts'
 import { FsWatcherManager } from './fs-watch.ts'
 import { PtyRegistry } from './pty-registry.ts'
 import { acceptTerminalSocket } from './terminal-route.ts'
@@ -80,9 +81,27 @@ export function apply(ctx: Context, options?: WorkbenchHostConfig): void {
     searchLimit: options?.searchLimit ?? DEFAULTS.searchLimit,
   })
   const gitHandlers = createGitHandlers({ rootCache })
+
+  const taskLedger = new TaskLedger()
+  const tasksReady = taskLedger.init().catch(() => {})
+  const taskHandlers: Record<string, (payload: unknown) => Promise<WorkbenchRouteEnvelope<unknown>>> = {
+    'tasks.list': async () => taskLedger.list(),
+    'tasks.create': async (payload) => taskLedger.create(payload),
+    'tasks.update': async (payload) => taskLedger.update(payload),
+    'tasks.delete': async (payload) => taskLedger.remove(payload),
+  }
+
+  // Task changes ride the existing SSE channel so every page stays current.
+  taskLedger.subscribe((frame) => {
+    watchers.broadcast(frame)
+  })
+
   const dispatch = async (method: string, payload: unknown): Promise<WorkbenchRouteEnvelope<unknown>> => {
     if (method === 'ping') return envelopeValue(pingResult())
-    const handler = handlers.get(method) ?? gitHandlers.get(method)
+    await tasksReady
+    const handler = handlers.get(method)
+      ?? gitHandlers.get(method)
+      ?? taskHandlers[method]
     if (handler === undefined) return fail('no-route', `unknown workbench method ${method}`)
     return handler(payload)
   }

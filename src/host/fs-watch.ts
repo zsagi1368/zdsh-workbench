@@ -45,9 +45,14 @@ interface RootEntry {
   emitBatch: () => void
 }
 
+/** Any SSE frame the manager relays: fs batches plus foreign-domain pings (tasks…). */
+export interface WatcherFrame {
+  domain: string
+}
+
 export class FsWatcherManager {
   private readonly roots = new Map<string, RootEntry>()
-  private readonly listeners = new Set<(frame: FsEventsFrame) => void>()
+  private readonly listeners = new Set<(frame: WatcherFrame) => void>()
   private readonly debounceMs: number
   private readonly maxRoots: number
   private readonly idleCloseMs: number
@@ -60,7 +65,7 @@ export class FsWatcherManager {
     this.factory = options.watchFactory ?? defaultWatchFactory
   }
 
-  subscribe(listener: (frame: FsEventsFrame) => void): () => void {
+  subscribe(listener: (frame: WatcherFrame) => void): () => void {
     this.listeners.add(listener)
     return () => {
       this.listeners.delete(listener)
@@ -94,6 +99,11 @@ export class FsWatcherManager {
         }
       }
     }
+  }
+
+  /** Relay a foreign-domain frame (e.g. tasks revision pings) to all SSE clients. */
+  broadcast(frame: WatcherFrame): void {
+    for (const listener of this.listeners) listener(frame)
   }
 
   activeRootCount(): number {
