@@ -17,10 +17,25 @@ export interface PanelDescriptor {
   title: string
   /** `+` menu ordering, ascending; lower comes first. Default 100. */
   order?: number
+  /**
+   * Content component contribution. Omitting it renders a placeholder body;
+   * the component receives `visible: false` whenever its tab is not the
+   * active one, so polling and subscriptions can pause.
+   */
+  component?: (props: { visible: boolean }) => import('react').ReactNode
 }
 
 export interface RegisteredPanel extends PanelDescriptor {
   readonly order: number
+}
+
+/** A named, invocable action surfaced in the command palette. */
+export interface CommandDescriptor {
+  /** Globally unique id; convention `provider:command`. */
+  id: string
+  /** Palette display title. */
+  title: string
+  run(): void
 }
 
 /** The registry face other modules receive via injection. */
@@ -29,6 +44,10 @@ export interface WorkbenchRegistryApi {
   registerPanel(descriptor: PanelDescriptor): () => void
   /** Current registration snapshot, ordered by `order` then registration sequence. */
   getPanels(): readonly RegisteredPanel[]
+  /** Register a palette command; returns its disposer. Duplicate ids throw. */
+  registerCommand(descriptor: CommandDescriptor): () => void
+  /** Current command snapshot, ordered by registration sequence. */
+  getCommands(): readonly CommandDescriptor[]
   /** Subscribe to registration changes; returns an unsubscribe disposer. */
   subscribe(listener: () => void): () => void
   /** Plugin version this registry serves; consumers gate new api on it. */
@@ -40,19 +59,39 @@ export interface WorkbenchRegistryApi {
   readonly features: readonly string[]
 }
 
-const REGISTRY_FEATURES: readonly string[] = ['panels'] as const
+const REGISTRY_FEATURES: readonly string[] = ['panels', 'commands'] as const
 
 class RegistrationError extends Error {
-  constructor(id: string) {
-    super(`workbench: duplicate panel id "${id}"`)
+  constructor(kind: string, id: string) {
+    super(`workbench: duplicate ${kind} id "${id}"`)
     this.name = 'RegistrationError'
   }
 }
 
-export function createWorkbenchRegistry(version: string): WorkbenchRegistryApi {
-  const panels = new Map<string, { descriptor: RegisteredPanel; seq: number }>()
-  const listeners = new Set<() => void>()
+function createIdMapStore<T>(kind: string) {
+  const items = new Map<string, { value: T; seq: number }>()
   let nextSeq = 0
+  return {
+    add(id: string, value: T): void {
+      if (items.has(id)) throw new RegistrationError(kind, id)
+      items.set(id, { value, seq: nextSeq++ })
+    },
+    remove(id: string): boolean {
+      return items.delete(id)
+    },
+    list(): Array<{ value: T; seq: number }> {
+      return [...items.values()].sort((a, b) => a.seq - b.seq)
+    },
+    has(id: string): boolean {
+      return items.has(id)
+    },
+  }
+}
+
+export function createWorkbenchRegistry(version: string): WorkbenchRegistryApi {
+  const panels = createIdMapStore<RegisteredPanel>('panel')
+  const commands = createIdMapStore<CommandDescriptor>('command')
+  const listeners = new Set<() => void>()
 
   const announce = (): void => {
     for (const listener of listeners) listener()
@@ -62,23 +101,32 @@ export function createWorkbenchRegistry(version: string): WorkbenchRegistryApi {
     version,
     features: REGISTRY_FEATURES,
     registerPanel(descriptor) {
-      if (panels.has(descriptor.id)) throw new RegistrationError(descriptor.id)
       const registered: RegisteredPanel = { ...descriptor, order: descriptor.order ?? 100 }
-      const seq = nextSeq++
-      panels.set(registered.id, { descriptor: registered, seq })
+      panels.add(registered.id, registered)
       announce()
       return () => {
         // Disposing an already-disposed registration stays a no-op so
         // double teardown (manual + fiber) never throws.
-        if (!panels.has(registered.id)) return
-        panels.delete(registered.id)
+        if (!panels.remove(registered.id)) return
         announce()
       }
     },
     getPanels() {
-      return [...panels.values()]
-        .sort((a, b) => a.descriptor.order - b.descriptor.order || a.seq - b.seq)
-        .map((entry) => entry.descriptor)
+      return panels
+        .list()
+        .sort((a, b) => a.value.order - b.value.order || a.seq - b.seq)
+        .map((entry) => entry.value)
+    },
+    registerCommand(descriptor) {
+      commands.add(descriptor.id, { ...descriptor })
+      announce()
+      return () => {
+        if (!commands.remove(descriptor.id)) return
+        announce()
+      }
+    },
+    getCommands() {
+      return commands.list().map((entry) => entry.value)
     },
     subscribe(listener) {
       listeners.add(listener)

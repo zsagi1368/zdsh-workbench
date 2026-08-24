@@ -1,5 +1,9 @@
 import { defineConfig } from 'tsdown'
 
+// Runtime-provided modules stay external in BOTH halves: @deepseek-ai/* is
+// supplied by the DSH web profile, react by the host page's shared React.
+const sharedExternal = [/^react($|[./])/, /^react-dom($|[./])/, /^@deepseek-ai\//]
+
 export default defineConfig([
   {
     entry: { index: 'src/host/index.ts' },
@@ -12,6 +16,7 @@ export default defineConfig([
     // The build script's rmSync owns lib/ cleanup and tsc emits lib/types/
     // BEFORE bundling; tsdown's own clean would wipe those declarations.
     clean: false,
+    external: sharedExternal,
     dts: false,
   },
   {
@@ -21,6 +26,7 @@ export default defineConfig([
     platform: 'browser',
     outExtensions: () => ({ js: '.js' }),
     clean: false,
+    external: sharedExternal,
     dts: false,
   },
 ])

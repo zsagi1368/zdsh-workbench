@@ -61,5 +61,26 @@ describe('workbench registry', () => {
     const registry = createWorkbenchRegistry(WORKBENCH_VERSION)
     expect(registry.version).toBe(WORKBENCH_VERSION)
     expect(registry.features).toContain('panels')
+    expect(registry.features).toContain('commands')
+  })
+
+  it('registers commands in insertion order with duplicate protection', () => {
+    const registry = createWorkbenchRegistry(WORKBENCH_VERSION)
+    registry.registerCommand({ id: 'a:one', title: 'One', run: () => {} })
+    registry.registerCommand({ id: 'b:two', title: 'Two', run: () => {} })
+    expect(() => registry.registerCommand({ id: 'a:one', title: 'Dup', run: () => {} })).toThrowError(/duplicate command id "a:one"/)
+    expect(registry.getCommands().map((command) => command.id)).toEqual(['a:one', 'b:two'])
+    expect(registry.getCommands()[0]?.title).toBe('One')
+  })
+
+  it('command disposal removes and double disposal stays quiet', () => {
+    const registry = createWorkbenchRegistry(WORKBENCH_VERSION)
+    const listener = vi.fn()
+    registry.subscribe(listener)
+    const dispose = registry.registerCommand({ id: 'c:x', title: 'X', run: () => {} })
+    dispose()
+    dispose()
+    expect(registry.getCommands()).toHaveLength(0)
+    expect(listener).toHaveBeenCalledTimes(2)
   })
 })
