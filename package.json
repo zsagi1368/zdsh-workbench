@@ -51,6 +51,7 @@
   "packageManager": "pnpm@11.17.0+sha512.cca3cea332ad254bb84145f966d19f4879615210346fc92c79a047f23a0d7b3cca3c3792f0076ba1f1831d277efbcf0a9119b31a9a60eca7fb3d6231f331ef72",
   "devDependencies": {
     "@deepseek-ai/cordis": "^4.0.1",
+    "@deepseek-ai/dsh-host-webserver": "0.1.2-alpha.3",
     "@types/node": "^24.13.3",
     "@types/react": "~18.3.31",
     "@types/react-dom": "~18.3.1",

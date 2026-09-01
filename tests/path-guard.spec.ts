@@ -4,7 +4,7 @@ import { rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { ensureRealPathInside, judgeInsideWorkspace, resolveWorkspaceRoot } from '../src/host/path-guard.ts'
+import { ensureRealPathInside, judgeInsideWorkspace, resolveWorkspaceRoot } from '../src/path-guard.ts'
 
 async function makeWorkspace(): Promise<string> {
   const base = await mkdtemp(join(tmpdir(), 'wb-guard-'))

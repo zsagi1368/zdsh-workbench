@@ -1,7 +1,7 @@
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { FsWatcherManager } from '../src/host/fs-watch.ts'
-import type { WatchFactory } from '../src/host/fs-watch.ts'
+import { FsWatcherManager } from '../src/fs-watch.ts'
+import type { WatchFactory } from '../src/fs-watch.ts'
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))

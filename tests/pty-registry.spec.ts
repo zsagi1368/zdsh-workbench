@@ -2,8 +2,8 @@ import { describe, expect, it, vi } from 'vitest'
 import {
   PtyRegistry,
   validateShellResolution,
-} from '../src/host/pty-registry.ts'
-import type { PtyProcess, PtySpawnRequest } from '../src/host/pty-registry.ts'
+} from '../src/pty-registry.ts'
+import type { PtyProcess, PtySpawnRequest } from '../src/pty-registry.ts'
 
 interface FakeTerm {
   request: PtySpawnRequest

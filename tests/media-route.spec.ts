@@ -4,8 +4,8 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { Context } from '@deepseek-ai/cordis'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { apply } from '../src/host/index.ts'
-import type { WebRoute } from '../src/host/context-types.ts'
+import { apply } from '../src/index.ts'
+import type { WebRoute } from '../src/context-types.ts'
 
 let workspace = ''
 let server: TestServer

@@ -1,8 +1,8 @@
-import { mkdtemp, readdir, readFile, rm } from 'node:fs/promises'
+import { mkdtemp, readdir, readFile, rm, stat } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { describe, expect, it, vi } from 'vitest'
-import { TaskLedger } from '../src/host/task-ledger.ts'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { TaskLedger } from '../src/task-ledger.ts'
 
 async function tempLedgerPath(): Promise<string> {
   const dir = await mkdtemp(join(tmpdir(), 'wb-tasks-'))
@@ -105,5 +105,75 @@ describe('task ledger', () => {
     await ledger.update({ id, status: 'done' })
     expect(seen.length).toBeGreaterThanOrEqual(2)
     expect(seen.at(-1)).toBe(ledger.getSnapshot().revision)
+  })
+
+  describe('defaultFilePath derivation chain (stubbed process.env)', () => {
+    const savedEnv: Record<string, string | undefined> = {}
+
+    beforeEach(() => {
+      for (const key of ['DSH_BRANCH_HOME', 'DSH_HOME', 'HOME', 'UserProfile'] as const) {
+        savedEnv[key] = process.env[key]
+        delete process.env[key]
+      }
+    })
+
+    afterEach(() => {
+      for (const [key, value] of Object.entries(savedEnv)) {
+        if (value === undefined) delete process.env[key]
+        else process.env[key] = value
+      }
+    })
+
+    /** No-arg construction exercises the private defaultFilePath; one mutation forces a write. */
+    async function assertDerivedPath(env: Record<string, string | undefined>, expected: string): Promise<void> {
+      for (const [key, value] of Object.entries(env)) {
+        if (value === undefined) delete process.env[key]
+        else process.env[key] = value
+      }
+      const ledger = new TaskLedger()
+      await ledger.init()
+      const created = await ledger.create({ title: '派生链探针' })
+      expect(created.ok).toBe(true)
+      await expect(stat(expected)).resolves.toBeTruthy()
+      expect((await readFile(expected, 'utf8')).includes('派生链探针')).toBe(true)
+    }
+
+    it('routes to <DSH_BRANCH_HOME>/workbench/tasks.json when DSH_BRANCH_HOME is set', async () => {
+      const root = await mkdtemp(join(tmpdir(), 'wb-branch-'))
+      await assertDerivedPath(
+        { DSH_BRANCH_HOME: root, DSH_HOME: join(root, 'unused'), HOME: undefined, UserProfile: undefined },
+        join(root, 'workbench', 'tasks.json'),
+      )
+    })
+
+    it('derives <DSH_HOME>/zdsh/workbench/tasks.json when only DSH_HOME is set', async () => {
+      const root = await mkdtemp(join(tmpdir(), 'wb-home-'))
+      await assertDerivedPath(
+        { DSH_BRANCH_HOME: undefined, DSH_HOME: root, HOME: undefined, UserProfile: undefined },
+        join(root, 'zdsh', 'workbench', 'tasks.json'),
+      )
+    })
+
+    it('falls back to the legacy ~/.zdsh-workbench/tasks.json when both are unset', async () => {
+      const home = await mkdtemp(join(tmpdir(), 'wb-legacy-'))
+      await assertDerivedPath(
+        { DSH_BRANCH_HOME: undefined, DSH_HOME: undefined, HOME: home, UserProfile: undefined },
+        join(home, '.zdsh-workbench', 'tasks.json'),
+      )
+    })
+
+    it('skips blank DSH_BRANCH_HOME / DSH_HOME values to the next tier', async () => {
+      const home = await mkdtemp(join(tmpdir(), 'wb-blank-'))
+      const root = await mkdtemp(join(tmpdir(), 'wb-blank-root-'))
+      await assertDerivedPath(
+        {
+          DSH_BRANCH_HOME: '   ',
+          DSH_HOME: root,
+          HOME: home,
+          UserProfile: undefined,
+        },
+        join(root, 'zdsh', 'workbench', 'tasks.json'),
+      )
+    })
   })
 })

@@ -6,7 +6,7 @@ const sharedExternal = [/^react($|[./])/, /^react-dom($|[./])/, /^@deepseek-ai\/
 
 export default defineConfig([
   {
-    entry: { index: 'src/host/index.ts' },
+    entry: { index: 'src/index.ts' },
     outDir: 'lib',
     format: 'esm',
     platform: 'node',
@@ -20,7 +20,7 @@ export default defineConfig([
     dts: false,
   },
   {
-    entry: { client: 'src/client/index.tsx' },
+    entry: { client: 'src/client/index.ts' },
     outDir: 'lib',
     format: 'esm',
     platform: 'browser',

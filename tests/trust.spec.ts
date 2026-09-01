@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { assertTrustedAuthorityEntry, isTrustedRequestHost } from '../src/host/trust.ts'
+import { assertTrustedAuthorityEntry, isTrustedRequestHost } from '../src/trust.ts'
 
 const headers = (host: string | undefined) => ({ host }) as Parameters<typeof isTrustedRequestHost>[0]
 

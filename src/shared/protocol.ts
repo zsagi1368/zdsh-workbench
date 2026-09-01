@@ -4,7 +4,14 @@
  */
 
 /** npm package name; the cordis loader mounts rows by this name. */
-export const WORKBENCH_PACKAGE_NAME = '@deepseek-ai/dsh-client-workbench'
+export const WORKBENCH_PACKAGE_NAME = 'zdsh-workbench'
+
+/**
+ * Plugin id from dsh.plugin.json; the DSH loader resolves the plugin row by
+ * it. Only this repository ships a dsh.plugin.json, so this constant exists
+ * here only (the upstream monorepo has no such manifest or constant).
+ */
+export const WORKBENCH_PLUGIN_ID = 'zdsh/workbench'
 
 /** Every HTTP route and WebSocket upgrade this plugin owns lives under it. */
 export const WORKBENCH_ROUTE_PREFIX = '/workbench'
@@ -13,7 +20,7 @@ export const WORKBENCH_ROUTE_PREFIX = '/workbench'
  * Plugin version. MUST equal the package.json "version"; the manifest
  * client spec guards that two-way sync.
  */
-export const WORKBENCH_VERSION = '0.1.1-rc.2-zDSH20260824a'
+export const WORKBENCH_VERSION = '0.1.0-beta.1'
 
 /** Answer shape of GET/POST `/workbench/api/ping` — the liveness probe used by mount e2e. */
 export interface PingResult {
@@ -22,6 +29,10 @@ export interface PingResult {
   version: string
 }
 
+/**
+ * Build the liveness-probe answer.
+ * @returns the ping result with ok, plugin, and version fields.
+ */
 export function pingResult(): PingResult {
   return { ok: true, plugin: WORKBENCH_PACKAGE_NAME, version: WORKBENCH_VERSION }
 }
