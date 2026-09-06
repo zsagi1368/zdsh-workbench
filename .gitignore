@@ -4,3 +4,6 @@ dist/
 coverage/
 *.log
 .DS_Store
+
+# Backup area (deletion right belongs to user, agents never clean it)
+del/
