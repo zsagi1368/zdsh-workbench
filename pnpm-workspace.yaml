@@ -1,5 +1,5 @@
 allowBuilds:
   node-pty: true
 minimumReleaseAgeExclude:
-  - '@deepseek-ai/dsh-host-webserver@0.1.2-alpha.4'
-  - '@deepseek-ai/dsh-invariants@0.1.2-alpha.4'
+  - '@deepseek-ai/dsh-host-webserver@0.1.2-rc.1'
+  - '@deepseek-ai/dsh-invariants@0.1.2-rc.1'
