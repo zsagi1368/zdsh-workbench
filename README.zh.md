@@ -15,7 +15,7 @@
 
 </div>
 
-> **权威源声明**：本仓库是 zDSH Workbench 的权威真源。zDSH 主仓（zdsh-latest 谱系）`packages/client/workbench/` 的 in-tree 副本为本仓的**构建镜像**；同步纪律为严格单向（权威源 → 镜像），禁止镜像侧开发——镜像漂移一律自本仓回灌。镜像契约：该目录下 `BUILD-MIRROR.md`（当前镜像锚：`193af62`）。
+> **权威源声明**：本仓库是 zDSH Workbench 的权威真源。本仓以出厂装件身份进入 zDSH 出厂谱，seed 行 `core/workbench`（`zdsh-factory/seed.json`，经 `@deepseek-ai/zdsh-factory-bundle` git pin 间接承载）。zDSH 主仓原 `packages/client/workbench/` in-tree 构建镜像已由 O-3 阶段 3 删除退役（2026-09-28）。
 
 ---
 

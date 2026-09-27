@@ -4,6 +4,13 @@ All notable changes to zdsh-workbench are documented here. Format follows Keep a
 
 ## [Unreleased]
 
+O3 装件化·阶段 3 主仓 in-tree 镜像退役（2026-09-28）：
+
+### Changed
+
+- README.md/README.zh.md 头注权威源声明轮转为装件形态措辞：主仓 `packages/client/workbench/` in-tree 构建镜像（含 `BUILD-MIRROR.md` 镜像契约）已整体删除退役（O3-S3，覆盖对账缺口 0：in-tree 17 spec/121 块全部由本仓 lane 同名承接+阶段 1 新增锁增强），本仓为唯一活跃真源，以出厂装件身份经 seed `core/workbench` 交付。
+- pin 裁决（D-O3-6）：本 commit 为纯文档面，seed pin 维持 `9467c65` 不轮转——工件面（lib/src/package.json/cordis.patch.yml/tsdown.config.ts/.gitignore）零字节 diff 留证，webstack 纯测试锁谱先例同族逻辑；真源 HEAD>pin 状态登记回执，下轮官方同步 pin 轮转时自然收编。
+
 O3 装件化·阶段 1 真源现代化（用户 O-3 裁决，2026-09-27）：
 
 ### Added
