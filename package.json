@@ -25,8 +25,36 @@
     "node": ">=20"
   },
   "dsh": {
+    "compatible": ">=0.1.5-rc.2 <0.2.0",
+    "autoApprove": true,
+    "capabilities": [
+      {
+        "type": "service",
+        "service": {
+          "name": "zdsh-workbench/server",
+          "factory": "./lib/index.js",
+          "singleton": true
+        }
+      }
+    ],
+    "sandbox": {
+      "type": "inline",
+      "resources": { "memoryLimitMb": 512, "cpuLimit": 50, "timeoutMs": 300000, "maxOutputBytes": 1000000 },
+      "filesystem": { "access": "readwrite", "allowedPaths": [], "deniedPatterns": [] },
+      "network": { "access": "external", "allowedHosts": [], "deniedHosts": [], "allowLocal": true },
+      "environment": { "whitelist": [], "blacklist": [], "clear": false },
+      "process": {
+        "spawn": true,
+        "exec": false,
+        "allowedCommands": ["git", "where.exe", "pwsh.exe", "powershell.exe", "cmd.exe", "bash"]
+      }
+    },
     "bundle": {
       "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "inject": []
     }
   },
   "files": [
