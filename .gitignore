@@ -1,5 +1,13 @@
 node_modules/
-lib/
+# Prebuilt artifacts are committed (FileHub TC-B3-31C / DESIGN §8-P-9 Option A
+# precedent): the two runtime bundles lib/index.js + lib/client.js are tracked
+# so a git+pin snapshot carries build output (offline first-boot, A-1.1.1).
+# Source maps and lib/types stay excluded — not needed at runtime and the maps
+# are release-size offenders. `lib/*` (not `lib/`) so the negations below can
+# re-include files inside the directory.
+lib/*
+!lib/index.js
+!lib/client.js
 dist/
 coverage/
 *.log
