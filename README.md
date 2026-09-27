@@ -15,6 +15,8 @@ Files · Editor · Terminal · Git · Tasks · Browse — plus an extension regi
 
 </div>
 
+> **Authoritative source notice**: this repository is the authoritative source of zDSH Workbench. The in-tree copy at `packages/client/workbench/` in the zDSH main repo (zdsh-latest lineage) is a **build mirror** of this repository; the sync discipline is strictly one-way (authoritative source → mirror) and mirror-side development is forbidden — mirror drift is always backfilled from this repository. Mirror contract: `BUILD-MIRROR.md` in that directory (anchor of the current mirror: `193af62`).
+
 ---
 
 ## Why Workbench
