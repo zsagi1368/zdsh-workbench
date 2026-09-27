@@ -30,12 +30,12 @@ async function startServer(): Promise<TestServer> {
       },
     },
   } as unknown as Context
-  apply(fakeCtx)
+  await apply(fakeCtx)
   const httpServer: Server = createServer((req: import('node:http').IncomingMessage, res: import('node:http').ServerResponse) => {
     const parsed = new URL(req.url ?? '/', 'http://workbench.invalid')
-    const exact = routes.find((route) => route.kind === 'exact' && route.path === parsed.pathname)
+    const exact = routes.find(route => route.kind === 'exact' && route.path === parsed.pathname)
     const prefix = routes
-      .filter((route) => route.kind === 'prefix' && parsed.pathname.startsWith(route.path))
+      .filter(route => route.kind === 'prefix' && parsed.pathname.startsWith(route.path))
       .sort((a, b) => b.path.length - a.path.length)[0]
     // Exact wins over prefix regardless of registration order (media route
     // must not be shadowed by the /workbench/api prefix — they do not overlap,
@@ -48,14 +48,14 @@ async function startServer(): Promise<TestServer> {
     }
     void handler(req, res)
   })
-  await new Promise<void>((resolveListen) => httpServer.listen(0, '127.0.0.1', resolveListen))
+  await new Promise<void>(resolveListen => httpServer.listen(0, '127.0.0.1', resolveListen))
   const address = httpServer.address()
   return {
     baseUrl: `http://127.0.0.1:${typeof address === 'object' && address !== null ? address.port : 0}`,
     routes,
     close: () =>
       new Promise((resolveClose) => {
-        httpServer.close(() => resolveClose())
+        httpServer.close(() =>{  resolveClose() })
       }),
   }
 }

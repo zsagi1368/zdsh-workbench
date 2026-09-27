@@ -8,7 +8,7 @@ describe('workbench registry', () => {
     registry.registerPanel({ id: 'late:z', title: 'Z', order: 10 })
     registry.registerPanel({ id: 'default:a', title: 'A' })
     registry.registerPanel({ id: 'early:b', title: 'B', order: 5 })
-    expect(registry.getPanels().map((p) => p.id)).toEqual(['early:b', 'late:z', 'default:a'])
+    expect(registry.getPanels().map(p => p.id)).toEqual(['early:b', 'late:z', 'default:a'])
     expect(registry.getPanels()[0]?.order).toBe(5)
     expect(registry.getPanels()[1]?.order).toBe(10)
   })
@@ -22,7 +22,7 @@ describe('workbench registry', () => {
   it('throws on duplicate ids and keeps the first registration intact', () => {
     const registry = createWorkbenchRegistry(WORKBENCH_VERSION)
     registry.registerPanel({ id: 'dup:key', title: 'First' })
-    expect(() => registry.registerPanel({ id: 'dup:key', title: 'Second' })).toThrowError(/duplicate panel id "dup:key"/)
+    expect(() => registry.registerPanel({ id: 'dup:key', title: 'Second' })).toThrow(/duplicate panel id "dup:key"/)
     expect(registry.getPanels()).toHaveLength(1)
     expect(registry.getPanels()[0]?.title).toBe('First')
   })
@@ -68,8 +68,8 @@ describe('workbench registry', () => {
     const registry = createWorkbenchRegistry(WORKBENCH_VERSION)
     registry.registerCommand({ id: 'a:one', title: 'One', run: () => {} })
     registry.registerCommand({ id: 'b:two', title: 'Two', run: () => {} })
-    expect(() => registry.registerCommand({ id: 'a:one', title: 'Dup', run: () => {} })).toThrowError(/duplicate command id "a:one"/)
-    expect(registry.getCommands().map((command) => command.id)).toEqual(['a:one', 'b:two'])
+    expect(() => registry.registerCommand({ id: 'a:one', title: 'Dup', run: () => {} })).toThrow(/duplicate command id "a:one"/)
+    expect(registry.getCommands().map(command => command.id)).toEqual(['a:one', 'b:two'])
     expect(registry.getCommands()[0]?.title).toBe('One')
   })
 

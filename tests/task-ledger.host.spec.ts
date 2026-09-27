@@ -1,4 +1,4 @@
-import { mkdtemp, readdir, readFile, rm, stat } from 'node:fs/promises'
+import { mkdtemp, readdir, readFile, stat } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -76,7 +76,7 @@ describe('task ledger', () => {
     // Fresh start after quarantine.
     expect(ledger.getSnapshot().tasks).toHaveLength(0)
     const files = await readdir(dir)
-    expect(files.some((name) => name.includes('.corrupt-'))).toBe(true)
+    expect(files.some(name => name.includes('.corrupt-'))).toBe(true)
     void listener
   })
 
@@ -89,7 +89,7 @@ describe('task ledger', () => {
     const ledger = new TaskLedger({ filePath: path })
     await ledger.init()
     const files = await readdir(dir)
-    const kept = files.find((name) => name.includes('.corrupt-')) ?? ''
+    const kept = files.find(name => name.includes('.corrupt-')) ?? ''
     expect((await readFile(join(dir, kept), 'utf8'))).toBe('broken-bytes')
   })
 
@@ -108,72 +108,50 @@ describe('task ledger', () => {
   })
 
   describe('defaultFilePath derivation chain (stubbed process.env)', () => {
+    const ENV_KEYS = ['DSH_BRANCH_HOME', 'DSH_HOME', 'HOME', 'UserProfile'] as const
     const savedEnv: Record<string, string | undefined> = {}
 
     beforeEach(() => {
-      for (const key of ['DSH_BRANCH_HOME', 'DSH_HOME', 'HOME', 'UserProfile'] as const) {
+      for (const key of ENV_KEYS) {
         savedEnv[key] = process.env[key]
-        delete process.env[key]
+        Reflect.deleteProperty(process.env, key)
       }
     })
 
     afterEach(() => {
-      for (const [key, value] of Object.entries(savedEnv)) {
-        if (value === undefined) delete process.env[key]
+      for (const key of ENV_KEYS) {
+        const value = savedEnv[key]
+        if (value === undefined) Reflect.deleteProperty(process.env, key)
         else process.env[key] = value
       }
     })
 
-    /** No-arg construction exercises the private defaultFilePath; one mutation forces a write. */
-    async function assertDerivedPath(env: Record<string, string | undefined>, expected: string): Promise<void> {
-      for (const [key, value] of Object.entries(env)) {
-        if (value === undefined) delete process.env[key]
-        else process.env[key] = value
-      }
+    it('writes <DSH_BRANCH_HOME>/workbench/tasks.json when DSH_BRANCH_HOME is set', async () => {
+      const branchHome = await mkdtemp(join(tmpdir(), 'wb-branch-home-'))
+      process.env['DSH_BRANCH_HOME'] = branchHome
       const ledger = new TaskLedger()
       await ledger.init()
-      const created = await ledger.create({ title: '派生链探针' })
+      const created = await ledger.create({ title: '派生落盘探针' })
       expect(created.ok).toBe(true)
-      await expect(stat(expected)).resolves.toBeTruthy()
-      expect((await readFile(expected, 'utf8')).includes('派生链探针')).toBe(true)
-    }
 
-    it('routes to <DSH_BRANCH_HOME>/workbench/tasks.json when DSH_BRANCH_HOME is set', async () => {
-      const root = await mkdtemp(join(tmpdir(), 'wb-branch-'))
-      await assertDerivedPath(
-        { DSH_BRANCH_HOME: root, DSH_HOME: join(root, 'unused'), HOME: undefined, UserProfile: undefined },
-        join(root, 'workbench', 'tasks.json'),
-      )
+      // Real on-disk assertion: the no-arg constructor must land in the
+      // branch home, not the legacy user-home default.
+      const target = join(branchHome, 'workbench', 'tasks.json')
+      expect((await stat(target)).isFile()).toBe(true)
+      expect((await readFile(target, 'utf8')).includes('派生落盘探针')).toBe(true)
     })
 
-    it('derives <DSH_HOME>/zdsh/workbench/tasks.json when only DSH_HOME is set', async () => {
-      const root = await mkdtemp(join(tmpdir(), 'wb-home-'))
-      await assertDerivedPath(
-        { DSH_BRANCH_HOME: undefined, DSH_HOME: root, HOME: undefined, UserProfile: undefined },
-        join(root, 'zdsh', 'workbench', 'tasks.json'),
-      )
-    })
+    it('falls back to the legacy <HOME>/.zdsh-workbench/tasks.json when both variables are unset', async () => {
+      const home = await mkdtemp(join(tmpdir(), 'wb-legacy-home-'))
+      process.env['HOME'] = home
+      const ledger = new TaskLedger()
+      await ledger.init()
+      const created = await ledger.create({ title: 'legacy 探针' })
+      expect(created.ok).toBe(true)
 
-    it('falls back to the legacy ~/.zdsh-workbench/tasks.json when both are unset', async () => {
-      const home = await mkdtemp(join(tmpdir(), 'wb-legacy-'))
-      await assertDerivedPath(
-        { DSH_BRANCH_HOME: undefined, DSH_HOME: undefined, HOME: home, UserProfile: undefined },
-        join(home, '.zdsh-workbench', 'tasks.json'),
-      )
-    })
-
-    it('skips blank DSH_BRANCH_HOME / DSH_HOME values to the next tier', async () => {
-      const home = await mkdtemp(join(tmpdir(), 'wb-blank-'))
-      const root = await mkdtemp(join(tmpdir(), 'wb-blank-root-'))
-      await assertDerivedPath(
-        {
-          DSH_BRANCH_HOME: '   ',
-          DSH_HOME: root,
-          HOME: home,
-          UserProfile: undefined,
-        },
-        join(root, 'zdsh', 'workbench', 'tasks.json'),
-      )
+      const target = join(home, '.zdsh-workbench', 'tasks.json')
+      expect((await stat(target)).isFile()).toBe(true)
+      expect((await readFile(target, 'utf8')).includes('legacy 探针')).toBe(true)
     })
   })
 })

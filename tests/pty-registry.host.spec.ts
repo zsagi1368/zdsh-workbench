@@ -95,7 +95,7 @@ describe('pty registry', () => {
     const { registry, killCount } = makeRegistry({ graceMs: 20 })
     registry.open('s', 't', noEvents)
     registry.detach('s', 't')
-    await new Promise((resolve) => setTimeout(resolve, 60))
+    await new Promise(resolve => setTimeout(resolve, 60))
     expect(killCount()).toBeGreaterThanOrEqual(1)
   })
 
@@ -105,7 +105,7 @@ describe('pty registry', () => {
     registry.detach('s', 't')
     const reattach = registry.open('s', 't', noEvents)
     expect(reattach).not.toHaveProperty('error')
-    await new Promise((resolve) => setTimeout(resolve, 60))
+    await new Promise(resolve => setTimeout(resolve, 60))
     expect(killCount()).toBe(0)
   })
 

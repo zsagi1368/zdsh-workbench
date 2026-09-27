@@ -4,7 +4,7 @@ import { FsWatcherManager } from '../src/fs-watch.ts'
 import type { WatchFactory } from '../src/fs-watch.ts'
 
 function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms))
+  return new Promise(resolve => setTimeout(resolve, ms))
 }
 
 describe('fs watcher manager', () => {
@@ -16,18 +16,18 @@ describe('fs watcher manager', () => {
     }
     const manager = new FsWatcherManager({ debounceMs: 10, watchFactory: factory })
     const frames: Array<{ domain: string; changes?: Array<{ path: string }> }> = []
-    manager.subscribe((frame) => frames.push(frame))
+    manager.subscribe(frame => frames.push(frame))
 
-    const dispose = manager.addRoots(['C:/ws-a'.replace(/\//g, '\\'), 'C:\\ws-b'].map((root) => root)) // platform-agnostic enough for the map keys below
+    const dispose = manager.addRoots(['C:/ws-a'.replace(/\//g, '\\'), 'C:\\ws-b'].map(root => root)) // platform-agnostic enough for the map keys below
     void dispose
 
-    const rootA = [...emitters.keys()].find((key) => key.includes('ws-a')) ?? ''
+    const rootA = [...emitters.keys()].find(key => key.includes('ws-a')) ?? ''
     emitters.get(rootA)?.('modify', 'x.txt')
     emitters.get(rootA)?.('modify', 'y.txt') // same window: coalesced into one batch
     await sleep(40)
     expect(frames).toHaveLength(1)
     expect(frames[0]?.domain).toBe('fs')
-    expect(frames[0]?.changes?.map((change) => change.path)).toEqual([
+    expect(frames[0]?.changes?.map(change => change.path)).toEqual([
       join(rootA, 'x.txt'),
       join(rootA, 'y.txt'),
     ])
@@ -49,14 +49,14 @@ describe('fs watcher manager', () => {
 
   it('evicts the oldest root beyond the LRU cap', () => {
     const closed: string[] = []
-    const factory: WatchFactory = (root) => ({
+    const factory: WatchFactory = root => ({
       close: () => closed.push(root),
     })
     const manager = new FsWatcherManager({ debounceMs: 5, maxRoots: 2, watchFactory: factory })
     manager.subscribe(() => {})
     const d1 = manager.addRoots(['C:\\one'])
-    const _d2 = manager.addRoots(['C:\\two'])
-    const _d3 = manager.addRoots(['C:\\three'])
+    manager.addRoots(['C:\\two'])
+    manager.addRoots(['C:\\three'])
     expect(manager.activeRootCount()).toBe(2)
     expect(closed).toEqual(['C:\\one'])
     d1()

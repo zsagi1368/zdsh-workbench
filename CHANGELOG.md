@@ -2,6 +2,27 @@
 
 All notable changes to zdsh-workbench are documented here. Format follows Keep a Changelog; versions are semver with pre-release tags.
 
+## [Unreleased]
+
+T3a 双源收敛（D3 裁决，2026-09-27）：主仓 in-tree `packages/client/workbench`
+（基线 `30e4d503f4`）全部领先行回灌本仓，本仓恢复为唯一活跃真源。
+
+### Added
+
+- **Compat guard**（`src/compat.ts` + vendored `src/vendor/dsh-compat/`）：注册前探测宿主核心符号，API 漂移时自动降级跳过注册而非崩溃；`apply` 相应改为 async。dsh-compat 未发布 npm（404），故按 index 入口面（probe+guard，零外部依赖）逐字内置，出处与刷新规则见 `src/vendor/dsh-compat/VENDOR.md`。
+- **i18n**：`src/client/locales.ts` 中英键对称字典 + `src/client/shell/context.ts` 翻译上下文；client 入口经 `ctx.locale` 注册命名空间（宿主提供 LocaleRuntime）。
+- **系统探针**：`src/system-probe.ts`（`where.exe`/`which` 查找绝对路径化、fail-closed），git-runner 与 pty-registry 全面接入——绝不以裸名 spawn（FB1 系加固）。
+- 新测试：`git-runner.host.spec`、`pty-registry.resolve.host.spec`、`system-probe.host.spec`；既有测试重命名为 in-tree `.host.spec`/`.client.spec` 约定；manifest spec 融合 package exports 断言。
+- devDependencies 新增 `@deepseek-ai/dsh-client-locale`、`@deepseek-ai/dsh-client-ui-slots`（均 `=0.1.5-rc.2`，type-only）与 `@testing-library/react ^16.1.0`；`@xterm/xterm` 移入 devDependencies（client bundle 已内联，无运行时依赖）。
+
+### Changed
+
+- 宿主 pin 轮转：`@deepseek-ai/dsh-host-webserver` `=0.1.2-rc.1` → `=0.1.5-rc.2`（devDependencies；pnpm-workspace.yaml `minimumReleaseAgeExclude` 同步轮转）。
+- `node-pty` `^1.1.0` → `1.2.0-beta.15`（对齐 in-tree 受测依赖矩阵）。
+- 面板/壳层功能面同步 in-tree 演进（文件树符号链接语义、任务台账派生链、终端重连回放、git 网络操作预览确认等既有能力的加固与扩展）。
+- `README-ARCHIVED.md` 顶部追加 SUPERSEDED 通告（原文保留为历史记录）。
+- 身份常量不变：包名 `zdsh-workbench`、插件 id `zdsh/workbench`、版本 `0.1.0-beta.1`（`src/shared/protocol.ts` 按真源侧保留，manifest 三方校验守护同步）。
+
 ## [0.1.0-beta.1] — 2026-08-24
 
 First public beta: the full M1–M7 milestone scope of the founding plan (docs/PLAN.md).

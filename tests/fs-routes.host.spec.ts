@@ -12,6 +12,7 @@ import { join } from 'node:path'
 import type { Context } from '@deepseek-ai/cordis'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { apply } from '../src/index.ts'
+import { WORKBENCH_PACKAGE_NAME } from '../src/shared/protocol.ts'
 import type { WebRoute } from '../src/context-types.ts'
 
 interface TestServer {
@@ -34,13 +35,13 @@ async function startServer(): Promise<TestServer> {
       },
     },
   } as unknown as Context
-  apply(fakeCtx)
+  await apply(fakeCtx)
 
   const server: Server = createServer((req, res) => {
     const parsed = new URL(req.url ?? '/', 'http://workbench.invalid')
-    const exact = routes.find((route) => route.kind === 'exact' && route.path === parsed.pathname)
+    const exact = routes.find(route => route.kind === 'exact' && route.path === parsed.pathname)
     const prefixes = routes
-      .filter((route) => route.kind === 'prefix' && parsed.pathname.startsWith(route.path))
+      .filter(route => route.kind === 'prefix' && parsed.pathname.startsWith(route.path))
       .sort((a, b) => b.path.length - a.path.length)
     const handler = exact?.handler ?? prefixes[0]?.handler
     if (handler === undefined) {
@@ -51,7 +52,7 @@ async function startServer(): Promise<TestServer> {
     void handler(req, res)
   })
   await new Promise<void>((resolveListen) => {
-    server.listen(0, '127.0.0.1', () => resolveListen())
+    server.listen(0, '127.0.0.1', () =>{  resolveListen() })
   })
   const address = server.address()
   const baseUrl = `http://127.0.0.1:${typeof address === 'object' && address !== null ? address.port : 0}`
@@ -60,7 +61,7 @@ async function startServer(): Promise<TestServer> {
     routes,
     close: () =>
       new Promise((resolveClose) => {
-        server.close(() => resolveClose())
+        server.close(() =>{  resolveClose() })
       }),
   }
 }
@@ -87,21 +88,28 @@ afterEach(async () => {
   await rm(workspace, { recursive: true, force: true }).catch(() => {})
 })
 
-const envelope = <T,>(value: unknown) => value as { ok: boolean; value?: T; error?: { code: string; message: string } }
+/** Envelope shape every workbench api answer shares; T names the success payload. */
+interface Envelope<T> {
+  ok: boolean
+  value?: T
+  error?: { code: string; message: string }
+}
+
+const envelope = <T>(value: unknown): Envelope<T> => value as { ok: boolean; value?: T; error?: { code: string; message: string } }
 const payload = (extra: Record<string, unknown>) => ({ cwd: workspace, ...extra })
 
 describe('workbench api integration', () => {
   it('answers ping inside the success envelope', async () => {
     const result = envelope<{ plugin: string; version: string }>(await api(server.baseUrl, 'ping'))
     expect(result.ok).toBe(true)
-    expect(result.value?.plugin).toBe('zdsh-workbench')
+    expect(result.value?.plugin).toBe(WORKBENCH_PACKAGE_NAME)
   })
 
   it('rejects foreign Host headers before any work', async () => {
     // undici (fetch) refuses to override Host, so drive the raw client where
     // the header is exactly what a rebinding attacker would send.
     const url = new URL(`${server.baseUrl}/workbench/api/ping`)
-    const result = await new Promise<{ ok: boolean; error?: { code: string } }>((resolve) => {
+    const result = await new Promise<Envelope<never>>((resolve) => {
       const req = httpRequest(
         {
           hostname: url.hostname,
@@ -112,10 +120,10 @@ describe('workbench api integration', () => {
         },
         (res) => {
           let data = ''
-          res.on('data', (chunk) => {
-            data += chunk
+          res.on('data', (chunk: Buffer) => {
+            data += chunk.toString('utf8')
           })
-          res.on('end', () => resolve(JSON.parse(data)))
+          res.on('end', () =>{  resolve(JSON.parse(data) as Envelope<never>) })
         },
       )
       req.end('{}')
@@ -132,9 +140,9 @@ describe('workbench api integration', () => {
       await api(server.baseUrl, 'fs.tree', payload({ path: workspace })),
     )
     expect(result.ok).toBe(true)
-    const names = result.value?.entries.map((entry) => entry.name) ?? []
+    const names = result.value?.entries.map(entry => entry.name) ?? []
     expect(names.indexOf('z-dir')).toBeLessThan(names.indexOf('a-file.txt'))
-    const dead = result.value?.entries.find((entry) => entry.name === 'dead-link')
+    const dead = result.value?.entries.find(entry => entry.name === 'dead-link')
     expect(dead?.broken).toBe(true)
   })
 
@@ -168,7 +176,7 @@ describe('workbench api integration', () => {
     )
     expect(result.ok).toBe(true)
     expect(await readFile(join(workspace, 'notes.md'), 'utf8')).toBe('# hello')
-    const leftovers = (await readdir(workspace)).filter((name) => name.includes('.zdsh-tmp-'))
+    const leftovers = (await readdir(workspace)).filter(name => name.includes('.zdsh-tmp-'))
     expect(leftovers).toEqual([])
   })
 
@@ -217,8 +225,8 @@ describe('workbench api integration', () => {
     )
     expect(result.ok).toBe(true)
     const paths: Array<{ path: string }> = result.value?.matches ?? []
-    expect(paths.some((match) => match.path.includes('node_modules'))).toBe(false)
-    expect(paths.some((match) => match.path.includes('.hidden'))).toBe(false)
-    expect(paths.some((match) => match.path.endsWith('target-file.ts'))).toBe(true)
+    expect(paths.some(match => match.path.includes('node_modules'))).toBe(false)
+    expect(paths.some(match => match.path.includes('.hidden'))).toBe(false)
+    expect(paths.some(match => match.path.endsWith('target-file.ts'))).toBe(true)
   })
 })

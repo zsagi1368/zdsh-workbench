@@ -41,4 +41,10 @@ describe('manifest consistency', () => {
     const bundle = (pkg.dsh as { bundle?: { patch?: string } }).bundle
     expect(bundle?.patch).toBe('./cordis.patch.yml')
   })
+
+  it('declares the package exports the loader mounts', () => {
+    const exportsMap = pkg.exports as Record<string, { default?: string }> | undefined
+    expect(exportsMap?.['.']?.default).toBe('./lib/index.js')
+    expect(exportsMap?.['./client']?.default).toBe('./lib/client.js')
+  })
 })

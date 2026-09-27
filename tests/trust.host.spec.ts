@@ -37,11 +37,11 @@ describe('workbench trust fence', () => {
   })
 
   it('refuses malformed configured entries loudly at load time', () => {
-    expect(() => assertTrustedAuthorityEntry('harness.internal/path')).toThrowError(/not a bare host/)
-    expect(() => assertTrustedAuthorityEntry('user@harness.internal')).toThrowError(/not a bare host/)
-    expect(() => assertTrustedAuthorityEntry(' lab.internal ')).toThrowError(/not a bare host/)
-    expect(() => assertTrustedAuthorityEntry('lab.internal:')).toThrowError(/not a bare host/)
-    expect(() => assertTrustedAuthorityEntry('lab.internal:03000')).toThrowError(/not a bare host/)
-    expect(() => assertTrustedAuthorityEntry('lab.internal:3000')).not.toThrow()
+    expect(() =>{  assertTrustedAuthorityEntry('harness.internal/path') }).toThrow(/not a bare host/)
+    expect(() =>{  assertTrustedAuthorityEntry('user@harness.internal') }).toThrow(/not a bare host/)
+    expect(() =>{  assertTrustedAuthorityEntry(' lab.internal ') }).toThrow(/not a bare host/)
+    expect(() =>{  assertTrustedAuthorityEntry('lab.internal:') }).toThrow(/not a bare host/)
+    expect(() =>{  assertTrustedAuthorityEntry('lab.internal:03000') }).toThrow(/not a bare host/)
+    expect(() =>{  assertTrustedAuthorityEntry('lab.internal:3000') }).not.toThrow()
   })
 })

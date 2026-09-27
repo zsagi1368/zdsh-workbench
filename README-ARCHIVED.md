@@ -1,3 +1,15 @@
+> **SUPERSEDED / 已取代（2026-09-27）** — D3 裁决（upgrade-process-v2 campaign）：双源已收敛。
+> 主仓 in-tree `packages/client/workbench`（固定基线 `30e4d503f4`）领先行已回灌本仓（T3a），
+> 宿主 pin 轮转至 `=0.1.5-rc.2`。本仓自即日起恢复为 workbench **唯一活跃真源**；T3b 将在主仓
+> 删除 in-tree 副本并切换为本仓安装态挂载。下方归档声明全文仅作历史记录保留，其中
+> 「冻结于 `06cabe4` / 不再接受功能提交」自本通告起失效（删除权仍归用户本人，铁律不变）。
+>
+> **EN**: The archive declaration below is SUPERSEDED as of 2026-09-27 (D3 ruling,
+> upgrade-process-v2 campaign). The in-tree lead from the main repo (baseline `30e4d503f4`)
+> has been backfilled into this repository (T3a) and host pins rotated to `=0.1.5-rc.2`;
+> this repo is again the single active source of truth, and T3b will remove the in-tree
+> copy in favor of an installed-state mount of this package. Original text kept as history.
+
 # ⚠️ ARCHIVED / 已归档冻结 — 请勿在此开发
 
 > **EN**: This repository (`zsagi1368/zdsh-workbench`) is ARCHIVED and frozen at commit

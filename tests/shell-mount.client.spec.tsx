@@ -4,7 +4,7 @@
  * attaches exactly the nodes it owns, registered panels surface as tabs,
  * opening focuses them, and disposal removes everything.
  */
-import { act } from 'react-dom/test-utils'
+import { act } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createWorkbenchRegistry } from '../src/client/registry.ts'
 import { WORKBENCH_VERSION } from '../src/shared/protocol.ts'

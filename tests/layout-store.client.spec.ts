@@ -4,7 +4,7 @@ import { LayoutStore, isLayout, reconcileTabs, resolveActive } from '../src/clie
 function memoryStorage(): Pick<Storage, 'getItem' | 'setItem' | 'removeItem'> {
   const map = new Map<string, string>()
   return {
-    getItem: (key) => map.get(key) ?? null,
+    getItem: key => map.get(key) ?? null,
     setItem: (key, value) => {
       map.set(key, value)
     },
@@ -19,7 +19,7 @@ describe('workbench layout store', () => {
     const store = new LayoutStore('t', memoryStorage())
     store.openPanel('a:one')
     store.openPanel('b:two')
-    expect(store.getState().tabs.map((tab) => tab.id)).toEqual(['a:one', 'b:two'])
+    expect(store.getState().tabs.map(tab => tab.id)).toEqual(['a:one', 'b:two'])
     expect(store.getState().activeId).toBe('b:two')
     // Re-opening an open panel only focuses it.
     store.openPanel('a:one')
@@ -51,7 +51,7 @@ describe('workbench layout store', () => {
     first.openPanel('x:y')
     expect(first.getState().revision).toBeGreaterThan(before)
     const second = new LayoutStore('k', storage)
-    expect(second.getState().tabs.map((tab) => tab.id)).toEqual(['x:y'])
+    expect(second.getState().tabs.map(tab => tab.id)).toEqual(['x:y'])
   })
 
   it('discards corrupt storage instead of partially trusting it', () => {
@@ -75,8 +75,8 @@ describe('workbench layout store', () => {
       },
       removeItem: () => {},
     }
-    const store = new LayoutStore('q', failing as unknown as Storage)
-    expect(() => store.openPanel('ok:panel')).not.toThrow()
+    const store = new LayoutStore('q', failing)
+    expect(() =>{  store.openPanel('ok:panel') }).not.toThrow()
     expect(store.getState().tabs).toHaveLength(1)
   })
 
@@ -86,14 +86,14 @@ describe('workbench layout store', () => {
       { id: 'gone:x', orphan: false },
     ]
     const withAOnly = reconcileTabs(stored, [{ id: 'live:a', title: 'A', order: 10 }])
-    expect(withAOnly.find((tab) => tab.id === 'gone:x')?.orphan).toBe(true)
-    expect(withAOnly.find((tab) => tab.id === 'live:a')?.orphan).toBe(false)
+    expect(withAOnly.find(tab => tab.id === 'gone:x')?.orphan).toBe(true)
+    expect(withAOnly.find(tab => tab.id === 'live:a')?.orphan).toBe(false)
 
     const revived = reconcileTabs(stored, [
       { id: 'live:a', title: 'A', order: 10 },
       { id: 'gone:x', title: 'X', order: 20 },
     ])
-    expect(revived.every((tab) => !tab.orphan)).toBe(true)
+    expect(revived.every(tab => !tab.orphan)).toBe(true)
   })
 
   it('keeps an orphan active tab focused so the placeholder is visible', () => {

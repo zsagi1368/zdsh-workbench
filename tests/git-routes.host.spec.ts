@@ -5,7 +5,7 @@
  */
 import { createServer, type Server } from 'node:http'
 import { spawnSync } from 'node:child_process'
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { Context } from '@deepseek-ai/cordis'
@@ -37,12 +37,12 @@ async function startServer(): Promise<TestServer> {
       },
     },
   } as unknown as Context
-  apply(fakeCtx)
+  await apply(fakeCtx)
   const httpServer: Server = createServer((req, res) => {
     const parsed = new URL(req.url ?? '/', 'http://workbench.invalid')
-    const exact = routes.find((route) => route.kind === 'exact' && route.path === parsed.pathname)
+    const exact = routes.find(route => route.kind === 'exact' && route.path === parsed.pathname)
     const prefix = routes
-      .filter((route) => route.kind === 'prefix' && parsed.pathname.startsWith(route.path))
+      .filter(route => route.kind === 'prefix' && parsed.pathname.startsWith(route.path))
       .sort((a, b) => b.path.length - a.path.length)[0]
     const handler = exact?.handler ?? prefix?.handler
     if (handler === undefined) {
@@ -52,14 +52,14 @@ async function startServer(): Promise<TestServer> {
     }
     void handler(req, res)
   })
-  await new Promise<void>((resolveListen) => httpServer.listen(0, '127.0.0.1', resolveListen))
+  await new Promise<void>(resolveListen => httpServer.listen(0, '127.0.0.1', resolveListen))
   const address = httpServer.address()
   return {
     baseUrl: `http://127.0.0.1:${typeof address === 'object' && address !== null ? address.port : 0}`,
     routes,
     close: () =>
       new Promise((resolveClose) => {
-        httpServer.close(() => resolveClose())
+        httpServer.close(() =>{  resolveClose() })
       }),
   }
 }
@@ -69,7 +69,7 @@ function gitIn(repo: string, args: string[]): void {
   if (result.status !== 0 && result.status !== 1) {
     // status may exit 1 with differences? no—status exits 0; keep guard tight.
     if (args[0] !== 'commit' || result.status !== 128) {
-      throw new Error(`git ${args.join(' ')} failed: ${String(result.stderr)}`)
+      throw new Error(`git ${args.join(' ')} failed: ${result.stderr ?? ''}`)
     }
   }
 }
@@ -107,7 +107,7 @@ describe('git api integration', () => {
     const result = await api<{ ok: boolean; value?: { branch: string; entries: Array<{ path: string; untracked: boolean }> }; error?: { code: string } }>('git.status', { cwd: workspace })
     expect(result.ok).toBe(true)
     expect(result.value?.branch).toContain('main')
-    expect(result.value?.entries.some((entry) => entry.path === 'new.txt' && entry.untracked)).toBe(true)
+    expect(result.value?.entries.some(entry => entry.path === 'new.txt' && entry.untracked)).toBe(true)
   })
 
   it('stages, shows cached diff, commits, and logs', async () => {
@@ -134,13 +134,6 @@ describe('git api integration', () => {
     expect(result.ok).toBe(false)
     expect(result.error?.code).toBe('outside-workspace')
   })
-
-  const previewShape = async (): Promise<void> => {
-    const preview = await api<{ value?: { requiresConfirmation: boolean; action: string } }>('git.push', { cwd: workspace })
-    const inner = preview as unknown as { value?: { requiresConfirmation: boolean } }
-    expect(inner.value?.requiresConfirmation).toBe(true)
-    void previewShape
-  }
 
   it('answers network actions with a confirmation preview first', async () => {
     const result = await api<{ ok: boolean; value?: { requiresConfirmation: boolean; action: string } }>('git.push', { cwd: workspace })
