@@ -15,6 +15,8 @@
 
 </div>
 
+> **权威源声明**：本仓库是 zDSH Workbench 的权威真源。zDSH 主仓（zdsh-latest 谱系）`packages/client/workbench/` 的 in-tree 副本为本仓的**构建镜像**；同步纪律为严格单向（权威源 → 镜像），禁止镜像侧开发——镜像漂移一律自本仓回灌。镜像契约：该目录下 `BUILD-MIRROR.md`（当前镜像锚：`193af62`）。
+
 ---
 
 ## 为什么需要 Workbench
@@ -128,6 +130,8 @@ export function apply(ctx: Context): void {
 - **Git 仅以 argv 数组运行。** 无 shell 拼接、不写身份配置、不读系统级配置；网络动词一律预览后确认。
 - **沙箱渲染。** 浏览器页签与 HTML 预览运行在不透明源 iframe 中（`sandbox=""`、无 referrer、空权限策略）；地址栏拒绝脚本协议与内网/环回地址。
 - **可选部署钳制。** 设置 `allowedRoots` 即可将请求声明的 cwd 限定在白名单目录内。
+- **进程面诚实申报。** 包清单 `dsh.sandbox.process` 申报 `spawn: true`：git 以 argv 数组经绝对路径解析后 spawn（解析失败即拒绝执行）；终端经 `node-pty` 派生真实 shell（Windows 侧限 pwsh/powershell/cmd 白名单，POSIX 侧限绝对路径形 `$SHELL`）；系统探针以绝对路径 spawn `where.exe`。`allowedCommands` 枚举可强制面（`git`、`where.exe`、`pwsh.exe`、`powershell.exe`、`cmd.exe`、`bash`）；用户配置的 shell 覆盖（`DSH_WORKBENCH_SHELL`/`SHELL`）经同一白名单/形状校验但无法在清单中逐一枚举——本句即该申报。
+- **环境变量面诚实申报。** Node 半只读取 10 个环境变量键：`DSH_WORKBENCH_SHELL`、`SystemRoot`、`WINDIR`、`ComSpec`、`SHELL`、`PATH`、`DSH_BRANCH_HOME`、`DSH_HOME`、`HOME`、`UserProfile`。git 子进程运行于自建窄化环境（仅 `PATH`/`SystemRoot`/`HOME`，另加固定 `LC_ALL=C`、`GIT_TERMINAL_PROMPT=0`、`GIT_CONFIG_NOSYSTEM=1`）；PTY 子进程按设计全量继承 `process.env`（终端即用户本人的 shell）。
 
 ## 开发
 

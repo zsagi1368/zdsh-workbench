@@ -4,6 +4,22 @@ All notable changes to zdsh-workbench are documented here. Format follows Keep a
 
 ## [Unreleased]
 
+O3 装件化·阶段 1 真源现代化（用户 O-3 裁决，2026-09-27）：
+
+### Added
+
+- package.json `dsh` 段补齐治理声明面：`compatible`/`capabilities[].service`（factory=./lib/index.js）/`sandbox`（诚实申报：spawn=true+allowedCommands 六命令+env 面文档申报）/`client`（platform web + inject []，运行时零 @deepseek-ai 值依赖实测）。
+- client 构建面改 ModuleLoader factory 形（tsdown cjs+banner/footer，PluginCenter 同款 vendor 化先例）；lib/index.js + lib/client.js prebuilt 入库（FileHub TC-B3-31C 先例，git+pin 快照离线首启）。
+- RA1d 判据 domain teardown 接线（ptyRegistry.disposeAll + watchers.closeAll + task 订阅释放，ctx.effect 双箭头形）。
+- tests：build-artifact.client.spec（factory 形四腿锁）+ manifest spec dsh 段/双轨交叉锁扩展 + teardown.host.spec（disposeAll 单元腿+apply 接线集成腿）。
+
+### Changed
+
+- README.zh.md 头注权威源声明补齐（双语对称，T3b-B 遗留）。
+- README.md/README.zh.md 安全模型节补进程面/环境变量面诚实申报（sandbox spawn 声明的文档面）。
+- .gitignore：lib/ 轮转为 FileHub 形否定式（!lib/index.js、!lib/client.js）。
+- docs/PLAN.md §12 追加 D6 双轨关系注记（运行时消费面=package.json dsh 段；dsh.plugin.json=独立生态身份面，保留零修改）。
+
 T3a 双源收敛（D3 裁决，2026-09-27）：主仓 in-tree `packages/client/workbench`
 （基线 `30e4d503f4`）全部领先行回灌本仓，本仓恢复为唯一活跃真源。
 

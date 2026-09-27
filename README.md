@@ -130,6 +130,8 @@ Registration returns a disposer — wrap it in `ctx.effect(...)` so unload and h
 - **Git runs argv-only.** No shell interpolation, no identity writes, no system config; network verbs are preview-then-confirm.
 - **Sandboxed rendering.** Browser tabs and HTML previews run in opaque-origin iframes (`sandbox=""`, no referrer, empty permissions policy); the address bar refuses scripting schemes and private/loopback hosts.
 - **Optional deployment clamp.** Set `allowedRoots` to confine every request-declared cwd to approved directories.
+- **Declared process face.** The package manifest declares `dsh.sandbox.process.spawn: true` honestly: git is spawned argv-only after absolute-path resolution (fail-closed), terminals spawn real shells through `node-pty` (Windows shells restricted to the pwsh/powershell/cmd allowlist, POSIX to an absolute-path `$SHELL`), and the system probe spawns `where.exe` by absolute path. `allowedCommands` enumerates the enforceable set (`git`, `where.exe`, `pwsh.exe`, `powershell.exe`, `cmd.exe`, `bash`); user-configured shell overrides (`DSH_WORKBENCH_SHELL`/`SHELL`) pass the same allowlist/shape validation but cannot be enumerated in the manifest — this sentence is that declaration.
+- **Declared environment face.** The node half reads exactly ten environment keys: `DSH_WORKBENCH_SHELL`, `SystemRoot`, `WINDIR`, `ComSpec`, `SHELL`, `PATH`, `DSH_BRANCH_HOME`, `DSH_HOME`, `HOME`, `UserProfile`. Git children run with a narrowed self-built environment (only `PATH`/`SystemRoot`/`HOME`, plus fixed `LC_ALL=C`, `GIT_TERMINAL_PROMPT=0`, `GIT_CONFIG_NOSYSTEM=1`); PTY children inherit the full `process.env` by design — a terminal is the user's own shell.
 
 ## Development
 

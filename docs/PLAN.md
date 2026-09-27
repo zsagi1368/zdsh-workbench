@@ -267,6 +267,7 @@ fork 式最近消息编辑（改历史语义，D3 待用户决策）；划选提
 | D3 | fork 式历史编辑 | 不进 v1/v1.x（改会话历史语义，风险高；宪章要求此类功能用户拍板） |
 | D4 | better-sidebar API 兼容 shim | 不做（社区表面形状，红线邻接；自有 API 已覆盖其全部能力点）。折中共存礼让：检测 `ctx.betterSidebar` 服务存在时设置页提示二选一（仅读服务键，不复刻任何接口） |
 | D5 | 独立发布 | **用户 2026-08-24 拍板变更**：双形态都要——内核集成进分支默认启用 + 同源源码推 GitHub 独立仓库（`zsagi1368/zdsh-workbench`）作为独立插件分发；可移植性铁律见 §4.2 |
+| D6 | 运行时声明双轨关系 | **O3 装件化（2026-09-27，设计裁决 D-O3-2）**：运行时消费面 = package.json `dsh` 段（zDSH 治理准入 + client-modules roster）；`dsh.plugin.json` = 独立生态身份/元数据面（主仓现零消费者），**保留零修改**——删除面（三方一致性 spec 改写）大于保留面，且保留即未来官方目录/通道采该约定时零成本对接。双轨 client 入口指针由 manifest spec 交叉锁防漂移（`plugin.client.main === exports['./client'].default`） |
 
 ## 13. 附：研究文档索引
 
