@@ -90,4 +90,32 @@ describe('fs watcher manager', () => {
     await sleep(40)
     expect(closes).toBe(1)
   })
+
+  it('closeAll closes every root, clears timers, and drops pending batches (teardown path)', async () => {
+    const closed: string[] = []
+    const emitters = new Map<string, (kind: 'modify', filename: string | null) => void>()
+    const factory: WatchFactory = (root, onChange) => {
+      emitters.set(root, onChange)
+      return { close: () => closed.push(root) }
+    }
+    const manager = new FsWatcherManager({ debounceMs: 20, watchFactory: factory })
+    const frames: Array<{ domain: string }> = []
+    manager.subscribe(frame => frames.push(frame))
+
+    manager.addRoots(['C:\\teardown-a', 'C:\\teardown-b'])
+    expect(manager.activeRootCount()).toBe(2)
+    // Arm a debounce timer on one root; closeAll must kill it with the entry.
+    emitters.get('C:\\teardown-a')?.('modify', 'x.txt')
+
+    manager.closeAll()
+    expect(manager.activeRootCount()).toBe(0)
+    expect(closed.sort()).toEqual(['C:\\teardown-a', 'C:\\teardown-b'])
+
+    manager.flushForTests() // nothing left to flush — the batch died with its root
+    await sleep(60) // past the debounce window: no late frame may escape
+    expect(frames).toHaveLength(0)
+
+    manager.closeAll() // idempotent: a second teardown call is a clean no-op
+    expect(manager.activeRootCount()).toBe(0)
+  })
 })

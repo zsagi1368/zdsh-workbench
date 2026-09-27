@@ -125,7 +125,8 @@ export async function apply(ctx: Context, options?: WorkbenchHostConfig): Promis
   }
 
   // Task changes ride the existing SSE channel so every page stays current.
-  taskLedger.subscribe((frame) => {
+  // The disposer is held for the domain teardown effect below (RA1d).
+  const unsubscribeTasks = taskLedger.subscribe((frame) => {
     watchers.broadcast(frame)
   })
 
@@ -253,4 +254,15 @@ export async function apply(ctx: Context, options?: WorkbenchHostConfig): Promis
       acceptTerminalSocket(ptyRegistry, req, socket, head)
     },
   }), 'workbench: terminal ws upgrade')
+
+  // RA1d domain teardown: unloading the fiber must not leak pty child
+  // processes, fs watcher handles, or the ledger→SSE subscription. The
+  // double-arrow form makes the inner function the effect's disposer
+  // (FileHub aab73d7 precedent); route withdrawal is already effect-wired
+  // above through the disposers register/registerUpgrade return.
+  ctx.effect(() => () => {
+    ptyRegistry.disposeAll()
+    watchers.closeAll()
+    unsubscribeTasks()
+  }, 'workbench: domain teardown')
 }

@@ -124,6 +124,15 @@ export class FsWatcherManager {
   }
 
   /**
+   * Close every watched root, clearing debounce and idle timers (plugin
+   * teardown path). Listeners stay attached but inert: with no roots left
+   * there is no fs-frame source, and pending batches die with their entries.
+   */
+  closeAll(): void {
+    for (const root of [...this.roots.keys()]) this.closeRoot(root)
+  }
+
+  /**
    * Number of roots currently under watch.
    * @returns the count of live root entries.
    */
