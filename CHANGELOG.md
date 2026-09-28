@@ -4,6 +4,13 @@ All notable changes to zdsh-workbench are documented here. Format follows Keep a
 
 ## [Unreleased]
 
+SYNC-P4 宿主 pin 轮转 0.1.5-rc.2 → 0.1.7-rc.2（2026-09-29）：
+
+### Changed
+
+- 宿主 pin 轮转：`@deepseek-ai/dsh-host-webserver`、`@deepseek-ai/dsh-client-locale`、`@deepseek-ai/dsh-client-ui-slots` `=0.1.5-rc.2` → `=0.1.7-rc.2`（devDependencies 3 条；pnpm-workspace.yaml `minimumReleaseAgeExclude` 4 条同步轮转，含 `@deepseek-ai/dsh-invariants` 传递项）；cordis lock 于 `^4.0.1` 区间内重解析 4.0.1 → 4.0.4（满足 0.1.7 宿主 peer `~4.0.4`，manifest 声明未动，peer 警告清零）。
+- 零源码适配：宿主消费面（dsh-host-webserver / dsh-client-locale/client）对 0.1.7-rc.2 typecheck 全绿；prebuilt lib（lib/index.js + lib/client.js）零字节 diff（build 复跑实证，prebuilt 同帧纪律）；compatible 区间 `>=0.1.5-rc.2 <0.2.0` 原样（覆盖 0.1.7-rc.2，manifest.client.spec 锁在位）。门禁：typecheck EXIT 0 + test 135/135（19 文件）+ build EXIT 0。本 commit 为 P5 seed 轮转新锚（pin 纪律）。
+
 O3 装件化·阶段 3 主仓 in-tree 镜像退役（2026-09-28）：
 
 ### Changed
