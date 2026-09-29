@@ -30,7 +30,7 @@ export default defineConfig([
     // The build script's rmSync owns lib/ cleanup and tsc emits lib/types/
     // BEFORE bundling; tsdown's own clean would wipe those declarations.
     clean: false,
-    external: sharedExternal,
+    deps: { neverBundle: sharedExternal },
     dts: false,
   },
   {
@@ -43,10 +43,12 @@ export default defineConfig([
     platform: 'browser',
     outExtensions: () => ({ js: '.js' }),
     clean: false,
-    external: sharedExternal,
-    // Browser imports cannot resolve bare specifiers from node_modules;
-    // everything the host page does not provide must be INLINED.
-    noExternal: [/^@xterm\//],
+    deps: {
+      neverBundle: sharedExternal,
+      // Browser imports cannot resolve bare specifiers from node_modules;
+      // everything the host page does not provide must be INLINED.
+      alwaysBundle: [/^@xterm\//],
+    },
     dts: false,
     banner: { js: loaderBanner },
     footer: { js: loaderFooter },
