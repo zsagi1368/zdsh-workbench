@@ -68,7 +68,7 @@ describe('dsh governance declaration (package.json "dsh")', () => {
   }
 
   it('pins the compatibility window and autoApprove to the factory-set form', () => {
-    expect(dsh.compatible).toBe('>=0.1.5-rc.2 <0.2.0')
+    expect(dsh.compatible).toBe('>=0.1.5-rc.2 <0.3.0')
     expect(dsh.autoApprove).toBe(true)
   })
 
