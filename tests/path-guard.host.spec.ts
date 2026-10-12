@@ -93,14 +93,18 @@ describe('workspace path guard', () => {
     }
   })
 
-  it('accepts an alias-prefixed request once canonicalized into the root coordinate (8.3 short-name shape)', async ({ skip }) => {
+  it('accepts an alias-prefixed request once canonicalized into the root coordinate (junction/symlink alias proxying the 8.3 short-name shape)', async ({ skip }) => {
     const root = await makeWorkspace()
     try {
       // A junction (win32) / symlink (POSIX) alias names the workspace through
-      // a different lexical prefix — the same coordinate mismatch an 8.3 short
-      // name (`RUNNER~1` vs the long user directory) produces on GitHub
-      // Windows runners, where the boot-side root is canonicalized but a raw
-      // lexical judgment on the request would brand every temp path an escape.
+      // a different lexical prefix — an ALIAS PROXY for the same coordinate
+      // mismatch the 8.3 short name produces (`RUNNER~1` vs the long user
+      // directory) on GitHub Windows runners, where the boot-side root is
+      // canonicalized but a raw lexical judgment on the request would brand
+      // every temp path an escape. The genuine 8.3 short-name spelling is NOT
+      // produced here: only a host that really generates 8.3 names can cover
+      // it, and that leg is asserted in workspace-clamp.host.spec.ts, labelled
+      // per host shape there.
       const alias = `${root}-alias`
       try {
         await symlink(root, alias, 'junction')
