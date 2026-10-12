@@ -92,4 +92,43 @@ describe('workspace path guard', () => {
       await rm(root, { recursive: true, force: true })
     }
   })
+
+  it('accepts an alias-prefixed request once canonicalized into the root coordinate (8.3 short-name shape)', async ({ skip }) => {
+    const root = await makeWorkspace()
+    try {
+      // A junction (win32) / symlink (POSIX) alias names the workspace through
+      // a different lexical prefix — the same coordinate mismatch an 8.3 short
+      // name (`RUNNER~1` vs the long user directory) produces on GitHub
+      // Windows runners, where the boot-side root is canonicalized but a raw
+      // lexical judgment on the request would brand every temp path an escape.
+      const alias = `${root}-alias`
+      try {
+        await symlink(root, alias, 'junction')
+      } catch {
+        // Platform refuses alias creation: report the gap as a skip instead of
+        // a vacuous green.
+        skip('host refuses alias (junction/symlink) creation')
+        return
+      }
+      try {
+        const canonicalRoot = await resolveWorkspaceRoot(root)
+        // Existing leaf behind the alias: the request must be re-expressed in
+        // the root's coordinate before the lexical containment judgment.
+        const existing = await ensureRealPathInside(canonicalRoot, join(alias, 'file.txt'))
+        expect(existing.allowed).toBe(true)
+        // Absent tail behind the alias: the deepest EXISTING ancestor is
+        // canonicalized and the remainder re-appended, so a path that is about
+        // to be created stays admissible instead of being branded an escape.
+        const absent = await ensureRealPathInside(canonicalRoot, join(alias, 'inner', 'deep', 'new-file.txt'))
+        expect(absent.allowed).toBe(true)
+        if (absent.allowed) {
+          expect(absent.target).toBe(join(canonicalRoot, 'inner', 'deep', 'new-file.txt'))
+        }
+      } finally {
+        await rm(alias, { recursive: true, force: true })
+      }
+    } finally {
+      await rm(root, { recursive: true, force: true })
+    }
+  })
 })
