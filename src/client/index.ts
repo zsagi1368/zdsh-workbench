@@ -49,6 +49,20 @@ function wireBuiltInCommands(registry: WorkbenchRegistryApi): () => void {
   }
 }
 
+/**
+ * Client-side cordis services this half reads at runtime. `locale` is a real
+ * runtime edge — `apply` registers the dictionaries and binds the namespace
+ * through `ctx.locale` — even though the Context merge import above is
+ * type-only. Declaring it is what makes the framework hand this fiber a live
+ * locale service; without it the property read is rejected outright
+ * (`cannot get property "locale" without inject`) and the entry fails.
+ */
+export const inject = ['locale']
+
+/**
+ * Client half entry: provides the registry, then mounts the dock.
+ * @param ctx - client context carrying the injected services.
+ */
 export function apply(ctx: Context): void {
   const registry = createWorkbenchRegistry(WORKBENCH_VERSION)
   ctx.provide('workbench', registry)
